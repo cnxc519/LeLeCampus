@@ -159,6 +159,18 @@ Item {
                         }
                     }
 
+                    // 交易地点（必填：线下交书面交用）
+                    Column {
+                        width: parent.width
+                        spacing: 8
+                        Text { text: "交易地点（必填）"; color: Root.Theme.textSub; font.pixelSize: 12 }
+                        AppInput {
+                            id: locationInput
+                            width: parent.width
+                            hint: "当面交书的地点，例如：工学部松园操场北门"
+                        }
+                    }
+
                     // 补充说明
                     Column {
                         width: parent.width
@@ -320,6 +332,14 @@ Item {
                                         fg: Root.Theme.danger
                                         bg: Root.Theme.dangerSoft
                                     }
+                                    Text {
+                                        width: parent.width - 250
+                                        visible: !!modelData.location
+                                        text: "📍 " + modelData.location
+                                        font.pixelSize: 11
+                                        color: Root.Theme.textSub
+                                        elide: Text.ElideRight
+                                    }
                                 }
                             }
                         }
@@ -439,6 +459,8 @@ Item {
     function publish() {
         var title = titleInput.text.trim()
         if (!title) { Ui.toast("请填写书名"); return }
+        var location = locationInput.text.trim()
+        if (!location) { Ui.toast("请填写交易地点（线下交书用）"); return }
         var priceCents = Util.yuanToCents(priceInput.text)
         if (isNaN(priceCents) || priceCents < 1) { Ui.toast("价格需在 0.01-999.99 元之间"); return }
         if (priceCents > 99999) { Ui.toast("价格需在 0.01-999.99 元之间"); return }
@@ -455,7 +477,8 @@ Item {
                 course: courseInput.text.trim(),
                 cond: page.cond || undefined,
                 price_cents: priceCents,
-                note: noteInput.text.trim()
+                note: noteInput.text.trim(),
+                location: location
             }).then(function (d) {
                 var bookId = d.id
                 var after = function () {
@@ -464,6 +487,7 @@ Item {
                     titleInput.text = ""
                     courseInput.text = ""
                     noteInput.text = ""
+                    locationInput.text = ""
                     priceInput.text = ""
                     page.cond = 0
                     page.photoFile = ""

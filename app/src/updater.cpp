@@ -147,8 +147,11 @@ void Updater::install()
                         "androidx/core/content/FileProvider", "getUriForFile",
                         "(Landroid/content/Context;Ljava/lang/String;Ljava/io/File;)Landroid/net/Uri;",
                         context.object(), jauth.object(), jfile.object());
-            if (env.checkAndClearExceptions()) { // Java 侧抛异常：留原因，换下一组合
-                lastErr = auth + QStringLiteral(" / ") + path;
+            if (env->ExceptionCheck()) { // Java 侧抛异常：抓异常原文，换下一组合
+                QJniObject thr(env->ExceptionOccurred());
+                env->ExceptionClear();
+                QJniObject m = thr.callObjectMethod("getMessage", "()Ljava/lang/String;");
+                lastErr = (m.isValid() ? m.toString() : QStringLiteral("Java 异常"));
                 continue;
             }
             if (!uri.isValid()) { lastErr = auth + QStringLiteral(" / invalid uri"); continue; }

@@ -273,7 +273,7 @@ Item {
 
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: "乐乐代跑 v1.0." + (Session.appVersionCode - 100) + " · 不碰钱 · 双向互评"
+                text: "乐乐代跑 v1." + (Math.floor(Session.appVersionCode / 10) % 10) + "." + (Session.appVersionCode % 10) + " · 不碰钱 · 双向互评"
                 color: Root.Theme.textLight
                 font.pixelSize: 10
             }
@@ -291,7 +291,7 @@ Item {
         } else if (m.action === "checkVersion") {
             app.checkVersion(true)
         } else if (m.action === "about") {
-            Ui.confirm({ title: "乐乐代跑 v1.0." + (Session.appVersionCode - 100), text: "校园代跑互助平台\n· 无密码注册，仅邮箱验证码\n· 挂单/接单互助，费用线下当面结算\n· 交易问题请走订单内申诉/举报流程", okText: "知道了" }, function () {})
+            Ui.confirm({ title: "乐乐代跑 v1." + (Math.floor(Session.appVersionCode / 10) % 10) + "." + (Session.appVersionCode % 10), text: "校园代跑互助平台\n· 无密码注册，仅邮箱验证码\n· 挂单/接单互助，费用线下当面结算\n· 交易问题请走订单内申诉/举报流程", okText: "知道了" }, function () {})
         } else if (m.page) {
             // 只传目标页确实声明的属性：HistoryPage 用 role，其余页面（公告中心/指南/设置等）没有，
             // 无脑传空 role 会让 push 对不存在属性赋值而中断，页面只显示一半内容

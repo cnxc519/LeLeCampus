@@ -127,6 +127,12 @@ Item {
                         text: page.detail ? page.detail.school : ""
                         fg: Root.Theme.textSub
                     }
+                    TagBadge {
+                        visible: page.detail && !!page.detail.location
+                        text: "📍 " + (page.detail ? page.detail.location : "")
+                        fg: Root.Theme.primaryDark
+                        bg: Root.Theme.primarySoft
+                    }
                 }
 
                 NoticeBar {

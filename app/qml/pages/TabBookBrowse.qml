@@ -347,6 +347,14 @@ Item {
                         }
                         Text {
                             width: parent.width
+                            visible: !!modelData.location
+                            text: "📍 " + modelData.location
+                            font.pixelSize: 11
+                            color: Root.Theme.text
+                            elide: Text.ElideRight
+                        }
+                        Text {
+                            width: parent.width
                             text: "👤 " + (modelData.seller ? modelData.seller.nickname : "") + (modelData.school ? " · " + modelData.school : "") + " · " + Util.tsShort(modelData.created_at).slice(5)
                             font.pixelSize: 11
                             color: Root.Theme.textLight

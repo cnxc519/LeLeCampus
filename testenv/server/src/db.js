@@ -216,6 +216,15 @@ if (!orderCols.includes('price_cents')) {
   db.exec(`ALTER TABLE orders ADD COLUMN price_cents INTEGER NOT NULL DEFAULT 199`);
 }
 
+// 老库迁移：books 增加交易地点列（线下交书面交用，必填）
+{
+  const bookCols = db.prepare(`PRAGMA table_info(books)`).all().map((c) => c.name);
+  if (!bookCols.includes('location')) {
+    db.exec(`ALTER TABLE books ADD COLUMN location TEXT`);
+    console.log('[migrate] books 表已增加 location 列');
+  }
+}
+
 // 老库迁移：runs 去掉 UNIQUE(order_id, date) —— 接单改为按日期+时间点，同一日期可被
 // 不同人分时段接（时间点不重叠），冲突改由业务层 bookedHoursByDate/capacityOk 校验
 {

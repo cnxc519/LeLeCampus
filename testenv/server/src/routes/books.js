@@ -26,7 +26,7 @@ function bookCard(b) {
   const school = db.prepare(`SELECT name FROM schools WHERE id=?`).get(seller ? seller.school_id : 0);
   return {
     id: b.id, title: b.title, course: b.course, cond: b.cond, cond_cn: b.cond ? COND_CN[b.cond] || '' : '',
-    price_cents: b.price_cents, note: b.note, photo: b.photo,
+    price_cents: b.price_cents, note: b.note, photo: b.photo, location: b.location || '',
     status: b.status, created_at: b.created_at,
     school: school ? school.name : '',
     seller: seller ? { id: seller.id, nickname: seller.nickname, gender: seller.gender, avatar: seller.avatar } : null,
@@ -60,7 +60,9 @@ router.post('/', (req, res) => {
   const title = String(req.body.title || '').trim();
   const course = String(req.body.course || '').trim();
   const note = String(req.body.note || '').trim();
+  const location = String(req.body.location || '').trim();
   if (title.length < 1 || title.length > 40) return fail(res, '书名需为 1-40 字');
+  if (location.length < 2 || location.length > 30) return fail(res, '请填写交易地点（2-30 字，方便买家当面取书）');
   if (course.length > 30) return fail(res, '课程名最多 30 字');
   if (note.length > 300) return fail(res, '补充说明最多 300 字');
   const price = Math.round(parseFloat(req.body.price_cents));
@@ -69,8 +71,8 @@ router.post('/', (req, res) => {
   if (cond && !(cond >= 1 && cond <= 4)) cond = null;
   if (!cond) cond = null;
 
-  const r = db.prepare(`INSERT INTO books(seller_id,title,course,cond,price_cents,note,created_at) VALUES(?,?,?,?,?,?,?)`)
-    .run(me.id, title, course || null, cond, price, note || null, new Date().toISOString());
+  const r = db.prepare(`INSERT INTO books(seller_id,title,course,cond,price_cents,note,location,created_at) VALUES(?,?,?,?,?,?,?,?)`)
+    .run(me.id, title, course || null, cond, price, note || null, location || null, new Date().toISOString());
   ok(res, { id: r.lastInsertRowid });
 });
 
