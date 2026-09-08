@@ -53,7 +53,7 @@ Item {
                     color: Root.Theme.text
                 }
                 Text {
-                    text: "TA 想接这单，确认后进入进行中（费用线下当面结算）"
+                    text: "TA 想接这单，同意后进入进行中（费用线下当面结算）"
                     font.pixelSize: 11
                     color: Root.Theme.textSub
                 }
@@ -63,7 +63,7 @@ Item {
                         width: 76; height: 28
                         radius: 14
                         color: Root.Theme.primary
-                        Text { anchors.centerIn: parent; text: "确认接单"; color: "#FFFFFF"; font.pixelSize: 11 }
+                        Text { anchors.centerIn: parent; text: "同意接单"; color: "#FFFFFF"; font.pixelSize: 11 }
                         MouseArea {
                             anchors.fill: parent
                             onClicked: Api.post('/api/orders/requests/' + page.request.run.id + '/confirm').then(function () {
@@ -285,19 +285,6 @@ Item {
                     text: "发送我的当前位置"
                     onClicked: { locationSheet.visible = false; page.sendLocation() }
                 }
-                AppButton {
-                    width: parent.width
-                    text: "手动输入位置描述"
-                    variant: "ghost"
-                    onClicked: {
-                        locationSheet.visible = false
-                        Ui.input({ title: "位置描述", hint: "例如：松园操场正门右侧" }, function (t) {
-                            if (t) Api.post("/api/chats/" + page.chatId + "/messages", { type: "location", text: t }).then(function () {
-                                page.load()
-                            }).catch(function (e) { Ui.toast(e.msg) })
-                        })
-                    }
-                }
                 Text {
                     width: parent.width
                     text: "位置信息用于碰头找对方，请描述准确。"
@@ -386,7 +373,7 @@ Item {
                 page.waitingPos = false
                 posSrc.active = false
                 Ui.loading(false)
-                Ui.toast("定位超时，请手动输入位置")
+                Ui.toast("定位超时，请稍后重试")
             }
         }
     }

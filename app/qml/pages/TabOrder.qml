@@ -47,7 +47,7 @@ Item {
         id: pageTimer
         interval: 30000
         repeat: true
-        onTriggered: { if (page.visible) page.load(false) }
+        onTriggered: { if (page.visible) page.load(false); page.loadUnread() }
     }
 
     function loadUnread() {

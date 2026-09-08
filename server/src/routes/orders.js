@@ -185,7 +185,7 @@ router.post('/:id/take', (req, res) => {
   db.prepare(`UPDATE chats SET unread_poster=unread_poster+1, last_at=? WHERE id=?`).run(nowTs(), chat.id);
 
   // 通知挂单方：确认 / 拒绝 / 私聊
-  notify(o.poster_id, 'take_request', '新的接单申请', `${me.nickname} 想接 ${date} ${hoursText} 的代跑，请确认或拒绝`,
+  notify(o.poster_id, 'take_request', '新的接单申请', `${me.nickname} 想接 ${date} ${hoursText} 的代跑，请同意或拒绝`,
     { run_id: r.lastInsertRowid, order_id: o.id, receiver_id: me.id, date, hours });
   pushToUser(o.poster_id, { t: 'run', run_id: r.lastInsertRowid, status: 'requested' });
   pushToUser(me.id, { t: 'chat', chat_id: chat.id });

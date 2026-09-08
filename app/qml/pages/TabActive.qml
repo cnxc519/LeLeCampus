@@ -128,7 +128,7 @@ Item {
                             spacing: 8
                             Repeater {
                                 model: [
-                                    { l: "确认接单", a: "confirm", c: Root.Theme.primarySoft, tc: Root.Theme.primaryDark },
+                                    { l: "同意接单", a: "confirm", c: Root.Theme.primarySoft, tc: Root.Theme.primaryDark },
                                     { l: "拒绝", a: "reject", c: Root.Theme.dangerSoft, tc: Root.Theme.danger },
                                     { l: "私聊", a: "chat", c: "#EEF0F3", tc: Root.Theme.textSub }
                                 ]

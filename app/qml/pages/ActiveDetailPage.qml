@@ -410,8 +410,15 @@ Item {
             Ui.loading(false)
             var p = posSrc.position
             if (!p.latitudeValid) { Ui.toast("定位失败，请确认已授权定位权限"); return }
-            Api.post("/api/active/" + page.runId + "/checkin", { lat: p.coordinate.latitude, lon: p.coordinate.longitude }).then(function () {
+            var lat = p.coordinate.latitude, lon = p.coordinate.longitude
+            Api.post("/api/active/" + page.runId + "/checkin", { lat: lat, lon: lon }).then(function () {
                 Ui.toast("打卡成功！已通知对方")
+                // 打卡的同时把实时位置发进订单会话：对方可直接点开地图导航到集合点
+                if (page.detail && page.detail.chat_id) {
+                    Api.post("/api/chats/" + page.detail.chat_id + "/messages",
+                             { type: "location", text: "我已到达集合点", lat: lat, lon: lon })
+                        .catch(function () {})
+                }
                 load()
             }).catch(function (e) { Ui.toast(e.msg) })
         }

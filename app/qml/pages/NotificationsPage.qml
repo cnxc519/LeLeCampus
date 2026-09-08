@@ -116,7 +116,7 @@ Item {
     }
 
     function actionsFor(n) {
-        if (n.type === "take_request") return [{ label: "确认接单", action: "confirm", kind: "primary" }, { label: "拒绝", action: "reject", kind: "danger" }, { label: "私聊", action: "chat", kind: "ghost" }]
+        if (n.type === "take_request") return [{ label: "同意接单", action: "confirm", kind: "primary" }, { label: "拒绝", action: "reject", kind: "danger" }, { label: "私聊", action: "chat", kind: "ghost" }]
         if (n.type === "rain_request") return [{ label: "同意终止", action: "rain_agree", kind: "primary" }, { label: "拒绝", action: "rain_decline", kind: "danger" }]
         if (n.type === "noshows_claimed") return [{ label: "反驳（终止订单）", action: "appeal", kind: "primary" }]
         if (n.type === "book_contact" || n.type === "book_msg") return [{ label: "去回复", action: "book_chat", kind: "primary" }]
@@ -202,6 +202,8 @@ Item {
 
     Component.onCompleted: {
         load()
+        // 打开通知页即全部标为已读（红点清零），无需逐条点操作按钮
+        Api.post("/api/notifications/read", {})
         // 页面停留时收到新通知即时刷新（登出/销毁必须注销，防止重复触发）
         page._unsubNotif = Realtime.on("notif", function () { page.load() })
     }

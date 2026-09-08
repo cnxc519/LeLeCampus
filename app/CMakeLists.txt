@@ -86,7 +86,7 @@ qt_add_qml_module(LeLeDaiPao
 #   3. 管理后台「版本更新」上传该 APK，并填写相同的版本号
 # 客户端更新判断用的是这个值：改了它构建出的 APK 才算"新版本"
 # ============================================================
-set(APP_VERSION_CODE 103)
+set(APP_VERSION_CODE 104)
 
 set_target_properties(LeLeDaiPao PROPERTIES
     MACOSX_BUNDLE_GUI_IDENTIFIER com.lele.daipao

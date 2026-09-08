@@ -286,19 +286,6 @@ Item {
                     text: "发送我的当前位置"
                     onClicked: { locationSheet.visible = false; page.sendLocation() }
                 }
-                AppButton {
-                    width: parent.width
-                    text: "手动输入位置描述"
-                    variant: "ghost"
-                    onClicked: {
-                        locationSheet.visible = false
-                        Ui.input({ title: "位置描述", hint: "例如：东区图书馆正门台阶前" }, function (t) {
-                            if (t) Api.post("/api/book-chats/" + page.chatId + "/messages", { type: "location", text: t }).then(function () {
-                                page.load()
-                            }).catch(function (e) { Ui.toast(e.msg) })
-                        })
-                    }
-                }
                 Text {
                     width: parent.width
                     text: "位置信息用于当面交易碰头，请描述准确。"
@@ -359,7 +346,7 @@ Item {
                 page.waitingPos = false
                 posSrc.active = false
                 Ui.loading(false)
-                Ui.toast("定位超时，请手动输入位置")
+                Ui.toast("定位超时，请稍后重试")
             }
         }
     }
