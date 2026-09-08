@@ -4,6 +4,7 @@ const { db, getSettings } = require('../db');
 const { requireUser } = require('../auth');
 const { ok, clampInt } = require('../util');
 const { userPublic, runCard } = require('../business');
+const { cfg } = require('../config');
 
 const router = express.Router();
 
@@ -26,6 +27,16 @@ router.get('/version', (req, res) => {
     note: s.version_note || '',
     forced: (s.version_forced || 0) === 1,
   });
+});
+
+// APK 一次性下载链接（10 分钟有效）：避免 /files/apk 公开直链暴露服务器入口。
+// 链接形如 /dl/apk?e=<过期ms>&k=<hmac(jwt_secret, "apk|e")>，过期或篡改即 404
+router.get('/apk-dl-url', requireUser, (req, res) => {
+  const crypto = require('crypto');
+  const { cfg } = require('../config');
+  const e = Date.now() + 10 * 60 * 1000;
+  const k = crypto.createHmac('sha256', cfg.jwt_secret).update(`apk|${e}`).digest('hex');
+  ok(res, { url: `/dl/apk?e=${e}&k=${k}`, expires_in: 600 });
 });
 
 router.get('/notifications', requireUser, (req, res) => {

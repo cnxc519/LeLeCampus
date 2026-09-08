@@ -18,8 +18,28 @@ app.use((req, res, next) => {
 });
 app.use(express.json({ limit: '128kb' }));
 
-// 静态资源：头像 / APK
+// 静态资源：头像 / 书籍封面（APK 不允许公开直链下载，见下方 /dl/apk）
+// 拦截必须放在 express.static 之前，否则静态服务会先命中并直接回包
+app.use('/files/apk', (req, res) => res.status(404).json({ ok: false, error: { code: 'NOT_FOUND', msg: '接口不存在' } }));
 app.use('/files', express.static(path.join(__dirname, '..', 'uploads'), { maxAge: '1d' }));
+// 签名下载入口：/dl/apk?e=<过期时间ms>&k=<hmac>（10 分钟内有效，由 /api/apk-dl-url 签发）
+app.get('/dl/apk', (req, res) => {
+  const e = parseInt(req.query.e, 10);
+  const k = String(req.query.k || '');
+  const crypto = require('crypto');
+  const fs = require('fs');
+  const expect = crypto.createHmac('sha256', cfg.jwt_secret).update(`apk|${e}`).digest('hex');
+  const apkPath = path.join(__dirname, '..', 'uploads', 'apk', 'lele-daipao.apk');
+  if (!Number.isFinite(e) || e < Date.now() || k !== expect) {
+    return res.status(404).json({ ok: false, error: { code: 'NOT_FOUND', msg: '下载链接已失效，请在 App 内重新获取' } });
+  }
+  if (!fs.existsSync(apkPath)) {
+    return res.status(404).json({ ok: false, error: { code: 'NOT_FOUND', msg: 'APK 尚未上传，请在管理后台发布' } });
+  }
+  res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+  res.setHeader('Content-Disposition', 'attachment; filename="lele-daipao.apk"');
+  res.sendFile(apkPath);
+});
 // 管理后台网页
 app.use('/admin', express.static(path.join(__dirname, '..', 'admin')));
 
