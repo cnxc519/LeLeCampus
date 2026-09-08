@@ -1,0 +1,13 @@
+{
+  "tokenA": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOjExLCJyb2xlIjoidXNlciIsImlhdCI6MTc4ODc3ODM0NywiZXhwIjoxNzkxMzcwMzQ3fQ.2tB_87tyiJbUQb46TPuo7sU7761_3svYolkugGB3kwY",
+  "myIdA": 11,
+  "nicknameA": "阿明（挂单方）",
+  "tokenB": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOjEyLCJyb2xlIjoidXNlciIsImlhdCI6MTc4ODc3ODM0NywiZXhwIjoxNzkxMzcwMzQ3fQ.Tvb0p3CQYW9PvnOHYF7iCzwrbWeLEI93POzv-DYj_Is",
+  "myIdB": 12,
+  "nicknameB": "小红（接单方）",
+  "chatId": 6,
+  "bookChatId": 5,
+  "bookChatId2": 6,
+  "orderId": 6,
+  "bookId": 5
+}

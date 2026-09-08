@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<manifest package="com.lele.daipao" xmlns:android="http://schemas.android.com/apk/res/android" android:versionName="1.0.102" android:versionCode="102" android:installLocation="auto">
+    <!-- 乐乐代跑：校园代跑平台 -->
+    <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="34"/>
+
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+
+    <application android:label="乐乐代跑" android:usesCleartextTraffic="true"
+        android:allowBackup="true" android:supportsRtl="true">
+        <!-- usesCleartextTraffic：服务端目前是 http://IP:端口，未上 HTTPS 前必须开启；上 HTTPS 后建议移除 -->
+        <activity android:configChanges="orientation|uiMode|screenLayout|screenSize|smallestScreenSize|layoutDirection|locale|fontScale|keyboard|keyboardHidden|navigation|mcc|mnc"
+            android:name="org.qtproject.qt.android.bindings.QtActivity"
+            android:label="乐乐代跑"
+            android:screenOrientation="unspecified"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+            <meta-data android:name="android.app.lib_name" android:value="-- %%INSERT_APP_LIB_NAME%% --"/>
+            <meta-data android:name="android.app.arguments" android:value=""/>
+            <meta-data android:name="android.app.extract_android_style" android:value="minimal"/>
+        </activity>
+
+        <!-- 应用内更新：FileProvider 共享 APK 给系统安装器 -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="com.lele.daipao.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths"/>
+        </provider>
+    </application>
+</manifest>
