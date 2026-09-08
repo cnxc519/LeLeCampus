@@ -3,11 +3,11 @@
 # 乐乐代跑 部署脚本（在【本地电脑】运行，Windows 用 Git Bash）
 #
 # 用法：
-#   bash deploy.sh        日常更新：上传代码 -> 装依赖(如有变化) -> 重启服务
+#   bash deploy.sh        日常更新：上传代码 -> 装依赖(如有变化) -> 重启服务 -> 自检
 #   bash deploy.sh init   首次部署：上述全部 + 安装 Node 24/PM2 + PM2 开机自启 + 放行端口
 #
-# 只需输入【一次】服务器密码：代码包和远程命令合并走同一条 SSH 连接
-# （本地先打 tar 包，远端脚本先按字节数收下 tar，再继续执行后续命令）
+# 密码只输一次：通过 SSH ControlMaster 连接复用，第一条命令建立主连接后，
+# 后续 scp/ssh 全部走同一条通道（若你的环境不支持复用，会退化为逐条询问，功能不受影响）
 # ============================================================
 set -e
 
@@ -25,24 +25,33 @@ fi
 
 cd "$(dirname "$0")"
 
-# 1. 本地打包（排除数据库/上传文件/日志——这些是服务器上的运行数据）
+# SSH 连接复用：主连接套件（Git Bash 的 OpenSSH 支持；不支持的环境自动退化为普通模式）
+CM_DIR="$(mktemp -d)"
+SSH_OPTS=(-o ControlMaster=auto -o "ControlPath=$CM_DIR/ssh-%r@%h-%p" -o ControlPersist=yes -o ServerAliveInterval=30)
+
+# 1. 建立主连接（唯一一次输密码）
+echo "================ 乐乐代跑部署（$MODE） ================"
+echo "目标 : ${SSH_USER}@${SERVER_IP}  目录: ${REMOTE_DIR}"
+echo ">> 请输入服务器密码（仅一次；之后自动复用连接）"
+ssh "${SSH_OPTS[@]}" "${SSH_USER}@${SERVER_IP}" "mkdir -p ${REMOTE_DIR} && echo   连接建立"
+
+# 2. 上传代码包（排除数据库/上传文件/日志——这些是服务器上的运行数据）
+echo "== 上传服务端代码 =="
 TMP_TGZ="$(mktemp -u).tgz"
 tar czf "$TMP_TGZ" --exclude=node_modules --exclude='data.db' --exclude='data.db-wal' \
   --exclude='data.db-shm' --exclude=uploads --exclude='*.log' \
   src admin scripts config.json package.json package-lock.json
-TARBYTES=$(wc -c < "$TMP_TGZ" | tr -d '[:space:]')
+scp "${SSH_OPTS[@]}" "$TMP_TGZ" "${SSH_USER}@${SERVER_IP}:/tmp/lele-deploy.tgz"
+rm -f "$TMP_TGZ"
 
-# 2. 远端脚本：先按字节数收下 tar 包，再按模式执行部署
-read -r -d '' REMOTE_SCRIPT <<REMOTE
+# 3. 远端部署：解包 -> (init: 装环境/放行端口) -> 装依赖 -> 重启 -> 自检
+echo "== 远端部署 =="
+ssh "${SSH_OPTS[@]}" "${SSH_USER}@${SERVER_IP}" "bash -s" <<REMOTE
 set -e
-BYTES="$TARBYTES"
-MODE="$MODE"
 DIR="$REMOTE_DIR"
 PORT="$PORT"
 APP="$APP_NAME"
 
-mkdir -p "\$DIR"
-head -c "\$BYTES" > /tmp/lele-deploy.tgz
 tar xzf /tmp/lele-deploy.tgz -C "\$DIR"
 rm -f /tmp/lele-deploy.tgz
 echo "   代码已更新"
@@ -84,16 +93,8 @@ else
 fi
 REMOTE
 
-# 3. 单次 SSH：脚本 + tar 包合并通过 stdin 传输（只需输一次密码）
-echo "================ 乐乐代跑部署（$MODE） ================"
-echo "目标 : ${SSH_USER}@${SERVER_IP}  目录: ${REMOTE_DIR}"
-echo ">> 请输入服务器密码（仅一次）"
-{
-  printf '%s\n' "$REMOTE_SCRIPT"
-  cat "$TMP_TGZ"
-} | ssh -o ServerAliveInterval=30 "${SSH_USER}@${SERVER_IP}" "bash -s -- $TARBYTES $MODE"
-
-rm -f "$TMP_TGZ"
+# 4. 关闭复用通道
+ssh -O exit -o "ControlPath=$CM_DIR/ssh-%r@%h-%p" "${SSH_USER}@${SERVER_IP}" 2>/dev/null || true
 
 echo ""
 echo "=========================================="
@@ -103,5 +104,4 @@ echo "    管理后台 : http://${SERVER_IP}:${PORT}/admin"
 echo "=========================================="
 if [ "$MODE" = "init" ]; then
   echo " ⚠️ 阿里云安全组需在控制台放行 TCP ${PORT}（服务器本机防火墙已自动放行）"
-  echo " ⚠️ 上线前确认 config.json：dev_mode=false、jwt_secret 已改、admin.password 已改"
 fi
