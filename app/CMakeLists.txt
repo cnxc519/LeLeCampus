@@ -86,7 +86,9 @@ qt_add_qml_module(LeLeDaiPao
 #   3. 管理后台「版本更新」上传该 APK，并填写相同的版本号
 # 客户端更新判断用的是这个值：改了它构建出的 APK 才算"新版本"
 # ============================================================
-set(APP_VERSION_CODE 104)
+set(APP_VERSION_CODE 105)
+# 显示版本名自动派生：105 -> 1.0.5（102 -> 1.0.2，以此类推）
+math(EXPR APP_PATCH_VER "${APP_VERSION_CODE} - 100")
 
 set_target_properties(LeLeDaiPao PROPERTIES
     MACOSX_BUNDLE_GUI_IDENTIFIER com.lele.daipao
@@ -98,7 +100,7 @@ set_target_properties(LeLeDaiPao PROPERTIES
     # 不设置时 Qt 会默认重写成 org.qtproject.example.xxx，导致安装环节 authority 对不上
     QT_ANDROID_PACKAGE_NAME "com.lele.daipao"
     QT_ANDROID_VERSION_CODE ${APP_VERSION_CODE}
-    QT_ANDROID_VERSION_NAME "1.0.${APP_VERSION_CODE}"
+    QT_ANDROID_VERSION_NAME "1.0.${APP_PATCH_VER}"
 )
 
 # main.cpp 的 APP_VERSION_CODE 由这里注入，与 manifest versionCode 同源

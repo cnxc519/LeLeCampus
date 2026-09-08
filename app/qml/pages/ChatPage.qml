@@ -144,7 +144,11 @@ Item {
                         spacing: 8
 
                         Rectangle {
-                            width: Math.min(bubbleText.implicitWidth + 24, bubbleRow.width - 60)
+                            // 位置消息的坐标行比正文宽：气泡按两者较宽者取值，
+                            // 否则自己(右侧)的气泡贴屏幕边时打开地图链接会被裁出屏幕外
+                            width: modelData.type === "location"
+                                   ? Math.max(bubbleText.implicitWidth + 24, locFlow.implicitWidth + 16)
+                                   : Math.min(bubbleText.implicitWidth + 24, bubbleRow.width - 60)
                             height: bubbleCol.implicitHeight + 16
                             radius: 12
                             color: modelData.sender_id === Session.myId ? Root.Theme.primary : "#FFFFFF"
@@ -163,7 +167,9 @@ Item {
                                     font.pixelSize: 14
                                     wrapMode: Text.Wrap
                                 }
-                                Row {
+                                Flow {
+                                    id: locFlow
+                                    width: parent.width
                                     visible: modelData.type === "location"
                                     spacing: 6
                                     Text {
