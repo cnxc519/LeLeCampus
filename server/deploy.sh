@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
 # ============================================================
-# 乐乐代跑 部署脚本（在【本地电脑】运行，Windows 用 Git Bash）
+# 乐乐代跑 部署脚本（在【本地电脑】运行，推荐 Git Bash）
 #
 # 用法：
 #   bash deploy.sh        日常更新：上传代码 -> 装依赖(如有变化) -> 重启服务 -> 自检
 #   bash deploy.sh init   首次部署：上述全部 + 安装 Node 24/PM2 + PM2 开机自启 + 放行端口
 #
-# 密码只输一次：通过 SSH ControlMaster 连接复用，第一条命令建立主连接后，
-# 后续 scp/ssh 全部走同一条通道（若你的环境不支持复用，会退化为逐条询问，功能不受影响）
+# 密码：仅【第一次运行】配置免密登录时输一次，此后部署完全免密。
 # ============================================================
 set -e
 
@@ -25,28 +24,39 @@ fi
 
 cd "$(dirname "$0")"
 
-# SSH 连接复用：主连接套件（Git Bash 的 OpenSSH 支持；不支持的环境自动退化为普通模式）
-CM_DIR="$(mktemp -d)"
-SSH_OPTS=(-o ControlMaster=auto -o "ControlPath=$CM_DIR/ssh-%r@%h-%p" -o ControlPersist=yes -o ServerAliveInterval=30)
+SSH_TARGET="${SSH_USER}@${SERVER_IP}"
 
-# 1. 建立主连接（唯一一次输密码）
+# ---------- 免密登录：未配置则一次性完成（此后部署不再需要密码） ----------
+if ! ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 "$SSH_TARGET" true 2>/dev/null; then
+  echo "================ 乐乐代跑部署（$MODE） ================"
+  echo ">> SSH 免密登录尚未配置（只需这一次输入密码，之后永久免密）"
+  if [ ! -f ~/.ssh/id_ed25519 ] && [ ! -f ~/.ssh/id_rsa ]; then
+    mkdir -p ~/.ssh
+    ssh-keygen -t ed25519 -N "" -f ~/.ssh/id_ed25519 -q
+    echo "   已生成 SSH 密钥 ~/.ssh/id_ed25519"
+  fi
+  ssh-copy-id -o StrictHostKeyChecking=accept-new -i ~/.ssh/id_ed25519.pub "$SSH_TARGET"
+  if ! ssh -o BatchMode=yes -o ConnectTimeout=10 "$SSH_TARGET" true 2>/dev/null; then
+    echo "⚠️ 免密配置未生效：请确认服务器 /root/.ssh/authorized_keys 包含你的公钥后重试"
+    exit 1
+  fi
+  echo "✅ 免密登录配置成功"
+fi
+
 echo "================ 乐乐代跑部署（$MODE） ================"
-echo "目标 : ${SSH_USER}@${SERVER_IP}  目录: ${REMOTE_DIR}"
-echo ">> 请输入服务器密码（仅一次；之后自动复用连接）"
-ssh "${SSH_OPTS[@]}" "${SSH_USER}@${SERVER_IP}" "mkdir -p ${REMOTE_DIR} && echo   连接建立"
+echo "目标 : $SSH_TARGET  目录: $REMOTE_DIR"
 
-# 2. 上传代码包（排除数据库/上传文件/日志——这些是服务器上的运行数据）
-echo "== 上传服务端代码 =="
+# ---------- 打包并上传（免密） ----------
 TMP_TGZ="$(mktemp -u).tgz"
 tar czf "$TMP_TGZ" --exclude=node_modules --exclude='data.db' --exclude='data.db-wal' \
   --exclude='data.db-shm' --exclude=uploads --exclude='*.log' \
   src admin scripts config.json package.json package-lock.json
-scp "${SSH_OPTS[@]}" "$TMP_TGZ" "${SSH_USER}@${SERVER_IP}:/tmp/lele-deploy.tgz"
+scp -q "$TMP_TGZ" "$SSH_TARGET:/tmp/lele-deploy.tgz"
 rm -f "$TMP_TGZ"
 
-# 3. 远端部署：解包 -> (init: 装环境/放行端口) -> 装依赖 -> 重启 -> 自检
+# ---------- 远端部署 ----------
 echo "== 远端部署 =="
-ssh "${SSH_OPTS[@]}" "${SSH_USER}@${SERVER_IP}" "bash -s" <<REMOTE
+ssh "$SSH_TARGET" "bash -s" <<REMOTE
 set -e
 DIR="$REMOTE_DIR"
 PORT="$PORT"
@@ -92,9 +102,6 @@ else
   echo "   ⚠️ 自检未通过，请执行 pm2 logs $APP 查看日志"
 fi
 REMOTE
-
-# 4. 关闭复用通道
-ssh -O exit -o "ControlPath=$CM_DIR/ssh-%r@%h-%p" "${SSH_USER}@${SERVER_IP}" 2>/dev/null || true
 
 echo ""
 echo "=========================================="
