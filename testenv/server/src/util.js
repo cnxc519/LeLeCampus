@@ -64,6 +64,8 @@ function inviteCode(len = 8) {
 function makeLimiter(windowMs, limit) {
   const m = new Map();
   return {
+    m, // 必须暴露给 cleanupLimiter 遍历；此前闭包没暴露，定时清理一跑（每小时）
+       // 整个进程直接 TypeError 崩掉 —— 生产上 PM2 拉起，用户侧表现为每小时闪断一次
     check(key) {
       const now = Date.now();
       const rec = m.get(key);

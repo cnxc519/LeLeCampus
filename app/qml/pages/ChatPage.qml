@@ -167,19 +167,20 @@ Item {
                                     font.pixelSize: 14
                                     wrapMode: Text.Wrap
                                 }
+                                // 注意：Flow 内子项禁止 anchors（Qt6 会报
+                                // "Cannot specify anchors for items inside Flow. Flow will not function."
+                                // 整个 Flow 直接不布局，"打开地图"蓝字因此消失）
                                 Flow {
                                     id: locFlow
                                     width: parent.width
                                     visible: modelData.type === "location"
                                     spacing: 6
                                     Text {
-                                        anchors.verticalCenter: parent.verticalCenter
                                         text: "坐标可在地图查看 ·"
                                         color: modelData.sender_id === Session.myId ? Qt.rgba(1,1,1,0.85) : Root.Theme.textSub
                                         font.pixelSize: 11
                                     }
                                     Text {
-                                        anchors.verticalCenter: parent.verticalCenter
                                         text: "打开地图"
                                         color: modelData.sender_id === Session.myId ? "#FFFFFF" : Root.Theme.blue
                                         font.pixelSize: 12

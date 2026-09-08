@@ -96,10 +96,15 @@ set_target_properties(LeLeDaiPao PROPERTIES
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
     MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
     ANDROID_MIN_SDK_VERSION 24
-    ANDROID_TARGET_SDK_VERSION 34
+    ANDROID_TARGET_SDK_VERSION 35
     # 包名必须与 AndroidManifest / FileProvider authority(com.lele.daipao.fileprovider) 一致；
     # 不设置时 Qt 会默认重写成 org.qtproject.example.xxx，导致安装环节 authority 对不上
     QT_ANDROID_PACKAGE_NAME "com.lele.daipao"
+    # 自定义 Android 清单 + 附加 Java 代码（ImageHelper）所在目录。
+    # 不设置时 Qt 用自带模板生成清单：REQUEST_INSTALL_PACKAGES、usesCleartextTraffic、
+    # 自定义 FileProvider 全部丢失 —— 应用内更新下载后装不了（invalid uri）就是这么来的
+    QT_ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/android"
+    QT_ANDROID_COMPILE_SDK_VERSION 35
     QT_ANDROID_VERSION_CODE ${APP_VERSION_CODE}
     QT_ANDROID_VERSION_NAME "1.${APP_MINOR_VER}.${APP_PATCH_VER}"
 )

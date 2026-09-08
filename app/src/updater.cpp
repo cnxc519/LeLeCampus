@@ -131,11 +131,16 @@ void Updater::install()
         }
     }
 
-    // authority 两份：运行时包名（Qt 可能重写 manifest package）+ manifest 里的字面量
-    QStringList authorities {
-        pkg + QStringLiteral(".fileprovider"),
-        QStringLiteral("com.lele.daipao.fileprovider"),
-    };
+    // authority 候选：我们 manifest 里声明的 fileprovider（包名运行时值 + 字面量），
+    // 以及 Qt 模板可能自带的 qtprovider（自定义 manifest 未生效时兜底）
+    QStringList authorities;
+    const QString literal = QStringLiteral("com.lele.daipao");
+    for (const QString &base : { pkg, literal }) {
+        authorities.removeAll(base + QStringLiteral(".fileprovider"));
+        authorities << base + QStringLiteral(".fileprovider");
+        authorities.removeAll(base + QStringLiteral(".qtprovider"));
+        authorities << base + QStringLiteral(".qtprovider");
+    }
 
     QString lastErr = QStringLiteral("FileProvider 均不可用");
     for (const QString &auth : authorities) {

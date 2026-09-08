@@ -114,8 +114,8 @@ router.post('/:id/rain', (req, res) => {
 
   db.prepare(`UPDATE runs SET status='rain_cancelled', completed_at=? WHERE id=?`).run(new Date().toISOString(), run.id);
   finishOrderIfDone(order.id);
-  notify(order.poster_id, 'rain_cancelled', '雨天订单已终止', '双方同意终止', { run_id: run.id });
-  notify(run.receiver_id, 'rain_cancelled', '雨天订单已终止', '双方同意终止', { run_id: run.id });
+  notify(order.poster_id, 'rain_cancelled', '雨天订单已终止', '双方同意终止；该次次数已返还，会自动顺延到后续日期', { run_id: run.id });
+  notify(run.receiver_id, 'rain_cancelled', '雨天订单已终止', '双方同意终止；该次次数已返还，会自动顺延到后续日期', { run_id: run.id });
   pushToUser(run.receiver_id, { t: 'run', run_id: run.id, status: 'rain_cancelled' });
   ok(res, { run_id: run.id, status: 'rain_cancelled' });
 });
@@ -156,8 +156,8 @@ router.post('/:id/appeal', (req, res) => {
 
   db.prepare(`UPDATE runs SET status='cancelled', completed_at=? WHERE id=?`).run(new Date().toISOString(), run.id);
   finishOrderIfDone(order.id);
-  notify(order.poster_id, 'noshows_cancelled', '爽约认定已被反驳', '对方反驳了爽约认定，订单已终止（不计爽约、不判定责任），如有异议请与对方协商', { run_id: run.id });
-  notify(run.receiver_id, 'noshows_cancelled', '你已反驳爽约认定', '订单已终止（不计爽约、不判定责任）', { run_id: run.id });
+  notify(order.poster_id, 'noshows_cancelled', '爽约认定已被反驳', '对方反驳了爽约认定，订单已终止（不计爽约、不判定责任），如有异议请与对方协商；该次次数已返还，会自动顺延到后续日期', { run_id: run.id });
+  notify(run.receiver_id, 'noshows_cancelled', '你已反驳爽约认定', '订单已终止（不计爽约、不判定责任）；该次次数已返还，会自动顺延到后续日期', { run_id: run.id });
   pushToUser(run.receiver_id, { t: 'run', run_id: run.id, status: 'cancelled' });
   ok(res, { ok: true, msg: '已反驳，订单终止，不计爽约' });
 });

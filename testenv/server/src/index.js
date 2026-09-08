@@ -47,6 +47,7 @@ app.use('/admin', express.static(path.join(__dirname, '..', 'admin')));
 app.get('/api/ping', (req, res) => ok(res, { time: Date.now(), tz: 'UTC+8', dev: cfg.dev_mode }));
 
 // 路由
+app.use((req, res, next) => { console.log('[req]', req.method, req.path, 'auth=' + (req.headers.authorization ? 'yes' : 'no')); next(); });
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/orders', require('./routes/orders'));
 app.use('/api/active', require('./routes/active'));

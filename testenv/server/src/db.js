@@ -285,13 +285,12 @@ tx(() => {
 
 // ---------- 设置 ----------
 // 数字型配置转 int；apk_url/version_note 这类字符串必须原样返回
-// （此前一律 parseInt，字符串设置读出来全是 NaN —— 管理后台发布的 APK 地址和
-//   更新说明保存后即丢，用户端永远收不到有效的更新提示）
+// （此前一律 parseInt：NaN 判断挡不住"1.修复了xxx"这种数字开头的说明文本，
+//   parseInt 只取前缀得到 1，更新说明存得再完整发出去也只剩一个 1）
 function getSettings() {
   const out = {};
   for (const row of db.prepare(`SELECT k,v FROM settings`).all()) {
-    const n = parseInt(row.v, 10);
-    out[row.k] = Number.isNaN(n) ? row.v : n;
+    out[row.k] = /^-?\d+$/.test(row.v) ? parseInt(row.v, 10) : row.v;
   }
   return out;
 }

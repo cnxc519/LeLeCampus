@@ -3,7 +3,7 @@
 Session::Session(QObject *parent) : QObject(parent)
 {
     m_token = m_s.value("auth/token", "").toString();
-    m_baseUrl = m_s.value("auth/baseUrl", "http://47.91.25.15:8899").toString();
+    m_baseUrl = m_s.value("auth/baseUrl", "http://127.0.0.1:8898").toString();
     m_nickname = m_s.value("profile/nickname", "").toString();
     m_email = m_s.value("profile/email", "").toString();
     m_gender = m_s.value("profile/gender", 0).toInt();

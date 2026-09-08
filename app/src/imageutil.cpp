@@ -13,40 +13,27 @@
 #include <QJniObject>
 #include <QCoreApplication>
 
-// Android 相册选择器返回 content:// URI，QFile/QImageReader 无法直接读取；
-// 通过 ContentResolver.openInputStream 把图片字节读进内存
-static QByteArray readContentUri(const QUrl &url)
+// Android 相册选择器返回 content:// URI。
+// 此前 C++ 经 JNI 逐段读 openInputStream 字节流：x86_64 模拟器上 ContentResolver 内部
+// 直接 SIGSEGV（崩在 java.lang.String.getChars），真机 HEIC/HEIF 照片 QImage 也解不了。
+// 改为调应用自带的 ImageHelper（app/android/src/com/lele/daipao/ImageHelper.java）：
+// Java 侧一次完成 读流→采样→缩放→压 JPEG，异常自兜底，失败返回 null。
+static QByteArray readContentUriViaHelper(const QUrl &url, int maxDim, int quality)
 {
+    QJniEnvironment env;
+    if (!env.findClass("com/lele/daipao/ImageHelper"))
+        return {};
     QJniObject context = QNativeInterface::QAndroidApplication::context();
     if (!context.isValid()) return {};
     QJniObject juri = QJniObject::fromString(url.toString());
-    QJniObject resolver = context.callObjectMethod("getContentResolver",
-        "()Landroid/content/ContentResolver;");
-    if (!resolver.isValid()) return {};
-    QJniObject is = resolver.callObjectMethod("openInputStream",
-        "(Landroid/net/Uri;)Ljava/io/InputStream;", juri.object());
-    if (!is.isValid()) return {};
+    QJniObject bytes = QJniObject::callStaticObjectMethod(
+                "com/lele/daipao/ImageHelper", "readScaledJpeg",
+                "(Landroid/content/Context;Landroid/net/Uri;II)[B",
+                context.object(), juri.object(), (jint)maxDim, (jint)quality);
+    if (env.checkAndClearExceptions() || !bytes.isValid()) return {};
 
-    QJniEnvironment env;
-    jclass baosCls = env.findClass("java/io/ByteArrayOutputStream");
-    if (!baosCls) { env.checkAndClearExceptions(); return {}; }
-    jmethodID ctor = env->GetMethodID(baosCls, "<init>", "()V");
-    QJniObject baos(env->NewObject(baosCls, ctor));
-    QJniObject buf(env->NewByteArray(16 * 1024));
-
-    jint total = 0;
-    const jint cap = 20 * 1024 * 1024; // 防异常大文件撑爆内存
-    while (total < cap) {
-        const jint n = is.callMethod<jint>("read", "([B)I", buf.object());
-        if (n <= 0) break;
-        baos.callMethod<void>("write", "([BII)V", buf.object(), 0, n);
-        total += n;
-    }
-    env.checkAndClearExceptions();
-
-    QJniObject bytes = baos.callObjectMethod("toByteArray", "()[B");
-    if (!bytes.isValid()) { env.checkAndClearExceptions(); return {}; }
     const jint len = bytes.callMethod<jint>("length");
+    if (len <= 0) return {};
     QByteArray out(len, Qt::Uninitialized);
     env->GetByteArrayRegion(static_cast<jbyteArray>(bytes.object()), 0, len,
                             reinterpret_cast<jbyte *>(out.data()));
@@ -61,11 +48,11 @@ QString ImageUtil::compress(const QUrl &src, int maxDim, int maxKb)
 {
     QImage img;
 #ifdef Q_OS_ANDROID
-    // content://（相册选择器）走 ContentResolver 读字节流
+    // content://（相册选择器）交给 Java 侧读流+解码+缩放，直接拿 JPEG 字节
     if (src.scheme() == QLatin1String("content")) {
-        const QByteArray bytes = readContentUri(src);
+        const QByteArray bytes = readContentUriViaHelper(src, maxDim, 85);
         if (bytes.isEmpty()) return QString();
-        img = QImage::fromData(bytes); // 自动识别 JPEG/PNG
+        img = QImage::fromData(bytes); // JPEG
     } else
 #endif
     {
