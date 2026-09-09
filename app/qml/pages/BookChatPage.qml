@@ -252,6 +252,8 @@ Item {
                     placeholderTextColor: Root.Theme.textLight
                     color: Root.Theme.text
                     background: Rectangle { radius: 21; color: "#F5F6F8" }
+                    // 部分安卓 ROM 首次聚焦的弹键盘请求会被窗口 resize 吞掉，显式拉起兜底
+                    onActiveFocusChanged: if (activeFocus) Qt.inputMethod.show()
                     Keys.onReturnPressed: page.send()
                 }
                 AppButton {

@@ -165,6 +165,8 @@ Item {
                     placeholderText: inputHint.text
                     font.pixelSize: 14
                     color: Root.Theme.text
+                    // 部分安卓 ROM 首次聚焦的弹键盘请求会被吞掉，显式拉起兜底
+                    onActiveFocusChanged: if (activeFocus) Qt.inputMethod.show()
                     background: Rectangle {
                         radius: 10
                         color: "#F5F6F8"

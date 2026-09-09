@@ -16,8 +16,12 @@ TextField {
     placeholderText: root.hint
     placeholderTextColor: Root.Theme.textLight
     echoMode: root.pw ? TextInput.Password : TextInput.Normal
-    selectByMouse: true
+    // 触屏上禁用鼠标选择：selectByMouse 会让部分安卓机型把首次点击当"移动光标"
+    // 处理（只出光标不弹键盘，点第二次才弹），且触屏本来用不上鼠标选择
+    selectByMouse: Qt.platform.os !== "android"
     inputMethodHints: root.pw ? Qt.ImhHiddenText : Qt.ImhNone
+    // 兜底：部分 ROM 上窗口 resize 会吞掉首次弹键盘请求，聚焦时显式拉起
+    onActiveFocusChanged: if (activeFocus) Qt.inputMethod.show()
 
     background: Rectangle {
         radius: Root.Theme.radiusBtn

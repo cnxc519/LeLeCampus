@@ -15,7 +15,9 @@ TextArea {
     placeholderText: root.hint
     placeholderTextColor: Root.Theme.textLight
     wrapMode: TextEdit.Wrap
-    selectByMouse: true
+    // 触屏上禁用鼠标选择（同 AppInput：部分安卓机型首次点击只出光标不弹键盘）
+    selectByMouse: Qt.platform.os !== "android"
+    onActiveFocusChanged: if (activeFocus) Qt.inputMethod.show()
 
     background: Rectangle {
         radius: Root.Theme.radiusBtn
