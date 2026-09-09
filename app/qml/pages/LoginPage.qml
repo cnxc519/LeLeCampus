@@ -345,13 +345,13 @@ Item {
                                     onClicked: {
                                         Ui.confirm({
                                             title: "添加新学校",
-                                            text: "平台目前先开放武汉大学试点。如果你的学校不在此列，请添加开发者 QQ：185520896，提供学校名称即可为你上架。",
-                                            okText: "复制 QQ 号",
+                                            text: "平台目前先开放武汉大学试点。如果你的学校不在此列，请添加开发者微信：18956014656，提供学校名称即可为你上架。",
+                                            okText: "复制微信号",
                                             cancelText: "关闭"
                                         }, function (ok) {
                                             if (ok) {
-                                                Clipboard.text = "185520896"
-                                                Ui.toast("QQ 号已复制")
+                                                Clipboard.text = "18956014656"
+                                                Ui.toast("微信号已复制")
                                             }
                                         })
                                     }
