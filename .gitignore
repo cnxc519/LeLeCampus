@@ -56,3 +56,4 @@ testenv/*.apk.idsig
 testenv/server/uploads/
 testenv/dl_test.apk
 *.keystore
+testenv/bookid.txt
