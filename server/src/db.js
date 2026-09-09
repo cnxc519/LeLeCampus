@@ -1,10 +1,25 @@
 // SQLite 数据库（Node 内置 node:sqlite，零原生依赖）：建表、种子数据、事务助手
 // 要求 Node >= 22.5（建议 24 LTS）。better-sqlite3 的兼容写法。
 const path = require('path');
+const fs = require('fs');
 const { DatabaseSync } = require('node:sqlite');
 const { DEFAULTS } = require('./config');
 
 const db = new DatabaseSync(path.join(__dirname, '..', 'data.db'));
+
+// 历史"已售出"书籍清理：现行为标记售出即删除，旧版本只改 status='sold'，
+// 启动时统一清掉残留的书行与封面文件，并关闭其会话
+try {
+  const soldRows = db.prepare(`SELECT id FROM books WHERE status='sold'`).all();
+  if (soldRows.length) {
+    for (const r of soldRows) {
+      try { fs.unlinkSync(path.join(__dirname, '..', 'uploads', 'books', r.id + '.jpg')); } catch (e) {}
+    }
+    db.prepare(`DELETE FROM books WHERE status='sold'`).run();
+    db.prepare(`UPDATE book_chats SET closed=1 WHERE book_id NOT IN (SELECT id FROM books)`).run();
+    console.log('[migrate] 已清理历史已售出书籍', soldRows.length, '本');
+  }
+} catch (e) { console.log('[migrate] 已售出书籍清理失败:', e.message); }
 db.exec('PRAGMA journal_mode=WAL');
 db.exec('PRAGMA foreign_keys=ON');
 

@@ -423,8 +423,20 @@ async function vVersion() {
         <button class="ghost" id="v-save-btn" onclick="saveVersion()">仅保存版本信息</button>
       </div>
       <p id="v-status" style="color:#7a8088;font-size:12px">上传 APK 会自动把地址置为 /files/apk/lele-daipao.apk，并按上方填写的版本号一键发布。</p>
+      <p style="background:#e6f5ee;border-radius:8px;padding:10px 12px;font-size:13px;color:#0f8a5f">
+        📢 推广下载地址（海报二维码用，永久有效，始终指向最新发布的版本）：
+        <a id="promo-url" style="font-weight:700"></a>
+        （二维码请对以下文本框内容生成）
+        <input id="promo-url-text" readonly style="width:280px;border:1px solid #dfe3e6;border-radius:6px;padding:4px 8px">
+      </p>
     </div>`);
 }
+  // 推广下载地址（落地页 /d，随管理后台访问地址自适应）
+  const promo = location.origin + '/d';
+  const pu = $('#promo-url'), put = $('#promo-url-text');
+  if (pu) { pu.textContent = promo; pu.href = promo; }
+  if (put) put.value = promo;
+
 function vStatus(msg, warn) {
   const el = $('#v-status');
   if (el) { el.textContent = msg; el.style.color = warn ? '#c0392b' : '#7a8088'; }

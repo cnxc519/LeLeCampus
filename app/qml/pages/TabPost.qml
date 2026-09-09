@@ -171,7 +171,7 @@ Item {
                         Text { text: "选择时间段（点按选择 / 拖拽连选，已选 " + grid.count() + " 格）"; color: Root.Theme.textSub; font.pixelSize: 12 }
                         NoticeBar {
                             width: parent.width
-                            text: "时间说明：9 点格表示 8:55-9:00 集合，超过 9 点视为爽约；今天的已过时段不可选。"
+                            text: "时间说明：9 点格表示 8:55-9:00 集合，超过 9 点视为爽约。"
                         }
                         WeekGrid {
                             id: grid

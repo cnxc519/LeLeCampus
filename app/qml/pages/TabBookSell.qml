@@ -64,14 +64,6 @@ Item {
                         AppInput { id: titleInput; hint: "例如：高等数学（第七版）下册 同济版" }
                     }
 
-                    // 课程名（选修该课的可直接搜到）
-                    Column {
-                        width: parent.width
-                        spacing: 8
-                        Text { text: "对应课程（选填）"; color: Root.Theme.textSub; font.pixelSize: 12 }
-                        AppInput { id: courseInput; hint: "例如：大学英语 / 电路分析基础" }
-                    }
-
                     // 新旧程度
                     Column {
                         width: parent.width
@@ -171,64 +163,105 @@ Item {
                         }
                     }
 
-                    // 补充说明
-                    Column {
+                    // ---------- 选填折叠区（课程/说明/封面默认收起，发布页更清爽） ----------
+                    Rectangle {
                         width: parent.width
-                        spacing: 8
-                        Text { text: "补充说明（选填，≤300 字）"; color: Root.Theme.textSub; font.pixelSize: 12 }
-                        AppTextArea {
-                            id: noteInput
-                            width: parent.width
-                            height: 70
-                            hint: "例如：原价 60+，重点笔记齐全，无缺页；南门宿舍可面交"
+                        height: 36
+                        radius: 10
+                        color: "#F5F7F8"
+                        Row {
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.left: parent.left
+                            anchors.leftMargin: 12
+                            spacing: 6
+                            Text {
+                                text: page.extraOpen ? "收起选填项 ▲" : "展开填写选填（课程 · 说明 · 封面照片）▼"
+                                font.pixelSize: 12
+                                color: Root.Theme.textSub
+                            }
+                            Text {
+                                visible: page.photoFile !== ""
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: "· 已选封面"
+                                font.pixelSize: 12
+                                color: Root.Theme.primary
+                            }
                         }
+                        MouseArea { anchors.fill: parent; onClicked: page.extraOpen = !page.extraOpen }
                     }
 
-                    // 封面图
                     Column {
                         width: parent.width
-                        spacing: 8
-                        Text { text: "封面照片（选填，一张；建议拍清书名）"; color: Root.Theme.textSub; font.pixelSize: 12 }
-                        Row {
+                        visible: page.extraOpen
+                        spacing: 12
+
+                        // 课程名（选修该课的可直接搜到）
+                        Column {
                             width: parent.width
-                            spacing: 10
-                            Rectangle {
-                                width: 84; height: 104
-                                radius: 10
-                                color: photoFile ? "transparent" : "#F0F1F3"
-                                border.color: Root.Theme.line
-                                clip: true
-                                Image {
-                                    anchors.fill: parent
-                                    visible: page.photoFile
-                                    source: page.photoFile
-                                    fillMode: Image.PreserveAspectCrop
-                                }
-                                Column {
-                                    anchors.centerIn: parent
-                                    visible: !page.photoFile
-                                    spacing: 4
-                                    Text { text: "📷"; font.pixelSize: 22 }
-                                    Text { text: "加封面"; color: Root.Theme.textLight; font.pixelSize: 10 }
-                                }
-                                MouseArea {
-                                    anchors.fill: parent
-                                    onClicked: page.pickPhoto(null)
-                                }
+                            spacing: 8
+                            Text { text: "对应课程（选填）"; color: Root.Theme.textSub; font.pixelSize: 12 }
+                            AppInput { id: courseInput; hint: "例如：大学英语 / 电路分析基础" }
+                        }
+
+                        // 补充说明
+                        Column {
+                            width: parent.width
+                            spacing: 8
+                            Text { text: "补充说明（选填，≤300 字）"; color: Root.Theme.textSub; font.pixelSize: 12 }
+                            AppTextArea {
+                                id: noteInput
+                                width: parent.width
+                                height: 70
+                                hint: "例如：原价 60+，重点笔记齐全，无缺页；南门宿舍可面交"
                             }
-                            Column {
-                                anchors.verticalCenter: parent.verticalCenter
-                                spacing: 4
-                                Text { text: page.photoFile ? "已选择封面，发布时一并上传" : "选一张封面，书市里更醒目"; color: Root.Theme.textSub; font.pixelSize: 11; wrapMode: Text.Wrap; width: parent.width }
+                        }
+
+                        // 封面图
+                        Column {
+                            width: parent.width
+                            spacing: 8
+                            Text { text: "封面照片（选填，一张；建议拍清书名）"; color: Root.Theme.textSub; font.pixelSize: 12 }
+                            Row {
+                                width: parent.width
+                                spacing: 10
                                 Rectangle {
-                                    width: 72; height: 28
-                                    radius: 14
-                                    color: page.photoFile ? Root.Theme.dangerSoft : "#EEF0F3"
-                                    visible: page.photoFile
-                                    Text { anchors.centerIn: parent; text: "移除"; color: page.photoFile ? Root.Theme.danger : Root.Theme.textLight; font.pixelSize: 11 }
+                                    width: 84; height: 104
+                                    radius: 10
+                                    color: photoFile ? "transparent" : "#F0F1F3"
+                                    border.color: Root.Theme.line
+                                    clip: true
+                                    Image {
+                                        anchors.fill: parent
+                                        visible: page.photoFile
+                                        source: page.photoFile
+                                        fillMode: Image.PreserveAspectCrop
+                                    }
+                                    Column {
+                                        anchors.centerIn: parent
+                                        visible: !page.photoFile
+                                        spacing: 4
+                                        Text { text: "📷"; font.pixelSize: 22 }
+                                        Text { text: "加封面"; color: Root.Theme.textLight; font.pixelSize: 10 }
+                                    }
                                     MouseArea {
                                         anchors.fill: parent
-                                        onClicked: page.photoFile = ""
+                                        onClicked: page.pickPhoto(null)
+                                    }
+                                }
+                                Column {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    spacing: 4
+                                    Text { text: page.photoFile ? "已选择封面，发布时一并上传" : "选一张封面，书市里更醒目"; color: Root.Theme.textSub; font.pixelSize: 11; wrapMode: Text.Wrap; width: parent.width }
+                                    Rectangle {
+                                        width: 72; height: 28
+                                        radius: 14
+                                        color: page.photoFile ? Root.Theme.dangerSoft : "#EEF0F3"
+                                        visible: page.photoFile
+                                        Text { anchors.centerIn: parent; text: "移除"; color: page.photoFile ? Root.Theme.danger : Root.Theme.textLight; font.pixelSize: 11 }
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            onClicked: page.photoFile = ""
+                                        }
                                     }
                                 }
                             }
@@ -238,6 +271,8 @@ Item {
                     AppButton {
                         width: parent.width
                         text: "发布到书市"
+                        busy: page.publishing
+                        busyText: "发布中..."
                         onClicked: page.publish()
                     }
                 }
@@ -387,7 +422,7 @@ Item {
                                 color: "#EEF0F3"
                                 Text {
                                     anchors.centerIn: parent
-                                    text: modelData.status === "off" ? "重新上架" : modelData.status === "on" ? "暂时下架" : "下架此书"
+                                    text: modelData.status === "off" ? "重新上架" : "暂时下架"
                                     font.pixelSize: 12
                                     color: Root.Theme.textSub
                                 }
@@ -412,6 +447,7 @@ Item {
 
     property int cond: 0
     property string photoFile: ""
+    property bool extraOpen: false // 发布表单的选填折叠区（课程/说明/封面）默认收起
 
     // 上传目标：null=发布中的新书；否则为已有书的 id（更换封面）
     function pickPhoto(bookId) {
@@ -456,7 +492,10 @@ Item {
         })
     }
 
+    property bool publishing: false
+
     function publish() {
+        if (page.publishing) return
         var title = titleInput.text.trim()
         if (!title) { Ui.toast("请填写书名"); return }
         var location = locationInput.text.trim()
@@ -482,6 +521,7 @@ Item {
             }).then(function (d) {
                 var bookId = d.id
                 var after = function () {
+                    page.publishing = false
                     Ui.loading(false)
                     Ui.toast("发布成功！")
                     titleInput.text = ""
@@ -513,9 +553,21 @@ Item {
     }
 
     function setStatus(b, st) {
-        Api.post("/api/books/" + b.id + "/status", { status: st }).then(function () {
-            loadMine()
-        }).catch(function (e) { Ui.toast(e.msg) })
+        var sold = (st === "sold")
+        Ui.confirm({
+            title: sold ? "标记已售出？" : "暂时下架？",
+            text: sold
+                ? "标记后本书所有信息将从平台删除，且无法再与买家取得联系；建议确认图书已当面交接后再操作。是否确认标记已售出？"
+                : "暂时下架后买家将无法再看到这本书，也无法发起新的联系；建议图书交接完成后再操作。是否确认暂时下架？",
+            okText: sold ? "确认已售出" : "确认下架",
+            danger: sold
+        }, function (ok) {
+            if (!ok) return
+            Api.post("/api/books/" + b.id + "/status", { status: st }).then(function () {
+                if (sold) Ui.toast("已标记售出，本书信息已从平台删除")
+                loadMine()
+            }).catch(function (e) { Ui.toast(e.msg) })
+        })
     }
 
     function loadMine() {

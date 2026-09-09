@@ -40,6 +40,70 @@ app.get('/dl/apk', (req, res) => {
   res.setHeader('Content-Disposition', 'attachment; filename="lele-daipao.apk"');
   res.sendFile(apkPath);
 });
+
+// ---------- 永久推广下载（海报二维码用） ----------
+// /d   落地页：展示当前版本与说明 + 下载按钮（二维码指向这里，之后换域名/端口只需改落地页跳转）
+// /dl/latest  直连：始终返回管理后台最新发布的 APK；不登录、签名永久有效，
+//             配简单限流防 bandwidth 被刷（校园推广场景，正常扫码人群互不影响）
+const { makeLimiter } = require('./util');
+const apkDlLimiter = makeLimiter(60 * 60 * 1000, 20); // 单 IP 每小时 20 次
+app.get('/dl/latest', (req, res) => {
+  const fs = require('fs');
+  const apkPath = path.join(__dirname, '..', 'uploads', 'apk', 'lele-daipao.apk');
+  if (!fs.existsSync(apkPath)) {
+    return res.status(404).send('<meta charset="utf-8"><body style="font-family:sans-serif;text-align:center;padding-top:20vh"><h2>APK 尚未发布</h2><p>请在管理后台上传 APK 并发布</p></body>');
+  }
+  if (!apkDlLimiter.check(`dl:${req.ip}`).ok) {
+    return res.status(429).send('<meta charset="utf-8"><body style="font-family:sans-serif;text-align:center;padding-top:20vh"><h2>下载太频繁啦</h2><p>请一小时后再试；如果你是正常扫码下载，一般不会碰到这条提示</p></body>');
+  }
+  const { getSettings } = require('./db');
+  const code = getSettings().version_code || 0;
+  res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+  res.setHeader('Content-Disposition', `attachment; filename="lele-daipao-v${code}.apk"`);
+  res.sendFile(apkPath);
+});
+app.get('/d', (req, res) => {
+  const { getSettings } = require('./db');
+  const s = getSettings();
+  const hasApk = require('fs').existsSync(path.join(__dirname, '..', 'uploads', 'apk', 'lele-daipao.apk'));
+  const note = String(s.version_note || '').trim();
+  res.send(`<!DOCTYPE html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>乐乐代跑 · App 下载</title>
+<style>
+  body{margin:0;font-family:-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;
+    background:linear-gradient(180deg,#0f8a5f 0%,#16a06f 30%,#f4f6f7 30.1%);min-height:100vh;text-align:center}
+  .wrap{max-width:420px;margin:0 auto;padding:48px 24px 40px}
+  .logo{width:76px;height:76px;border-radius:20px;background:#fff;display:inline-flex;align-items:center;
+    justify-content:center;font-size:40px;font-weight:800;color:#0f8a5f;box-shadow:0 6px 18px rgba(0,0,0,.18)}
+  h1{color:#fff;font-size:26px;margin:14px 0 4px;letter-spacing:1px}
+  .sub{color:rgba(255,255,255,.85);font-size:13px;margin-bottom:26px}
+  .card{background:#fff;border-radius:16px;padding:22px 18px;box-shadow:0 8px 24px rgba(0,0,0,.08)}
+  .ver{display:inline-block;background:#e6f5ee;color:#0f8a5f;border-radius:12px;padding:4px 12px;
+    font-size:13px;font-weight:600}
+  .note{color:#5a6570;font-size:13px;line-height:1.7;margin:12px 0 18px;white-space:pre-line}
+  a.btn{display:block;background:linear-gradient(135deg,#12a06d,#0d8a5f);color:#fff;text-decoration:none;
+    border-radius:14px;padding:14px 0;font-size:17px;font-weight:700;box-shadow:0 6px 16px rgba(15,138,95,.35)}
+  .hint{color:#98a1a8;font-size:12px;line-height:1.7;margin-top:14px;text-align:left}
+  .foot{color:#a8b0b6;font-size:11px;margin-top:22px;line-height:1.7}
+</style></head><body>
+<div class="wrap">
+  <div class="logo">跑</div>
+  <h1>乐乐代跑</h1>
+  <div class="sub">校园代跑互助 · 二手书市 · 一个 App</div>
+  <div class="card">
+    ${hasApk ? `<span class="ver">最新版本 v${s.version_code || '?'}</span>
+    ${note ? `<div class="note">${note.replace(/</g, '&lt;')}</div>` : ''}
+    <a class="btn" href="/dl/latest" download>下载 Android 安装包</a>
+    <div class="hint">· 下载完成后点击安装包，若系统提示「禁止安装未知应用」，请按提示允许后重试<br>· 注册需邮箱验证码，验证码邮件可能进入垃圾箱<br>· 仅支持 Android，微信内扫码请点右上角「在浏览器打开」</div>`
+    : `<span class="ver">安装包准备中</span><div class="note">APK 尚未发布，请稍后再试</div>`}
+  </div>
+  <div class="foot">本平台仅提供信息撮合与技术支持，线下交易请当面验视、当面结算。<br>严禁利用本平台进行违反校规校纪的行为。</div>
+</div>
+</body></html>`);
+});
 // 管理后台网页
 app.use('/admin', express.static(path.join(__dirname, '..', 'admin')));
 

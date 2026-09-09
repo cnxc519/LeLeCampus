@@ -93,7 +93,7 @@ Item {
                         }
                         Text {
                             width: parent.width
-                            text: "挂单次数：" + (page.detail ? page.detail.run_count : "") + " 次（剩余 " + (page.detail ? page.detail.remaining : "") + " 次；每天最多安排一单，一次可勾选当天多个时间点）"
+                            text: "挂单次数：" + (page.detail ? page.detail.run_count : "") + " 次（剩余 " + (page.detail ? page.detail.remaining : "") + " 次；每天最多安排一单，一天仅可选一个时间点）"
                             font.pixelSize: 13
                             color: Root.Theme.textSub
                             wrapMode: Text.Wrap
@@ -195,11 +195,12 @@ Item {
                             }
                             Text {
                                 width: parent.width
-                                text: "勾选你能到场的时间点（" + modelData.hours.length + " 个可选，可多选）"
+                                text: "选择你能到场的一个时间点（当天 " + modelData.hours.length + " 个可选，仅选 1 个）"
                                 font.pixelSize: 11
                                 color: Root.Theme.textSub
                             }
-                            // 时间点多选 chips（Flow 自动换行，避免长列表把按钮挤出屏幕）
+                            // 时间点单选 chips（Flow 自动换行，避免长列表把按钮挤出屏幕）：
+                            // 一天仅可选一个时间点，点其他 chip 会切换选中
                             Flow {
                                 width: parent.width
                                 spacing: 8
@@ -236,7 +237,7 @@ Item {
                                         MouseArea {
                                             anchors.fill: parent
                                             enabled: !mine
-                                            onClicked: page.toggleHour(dateCard.selKey, hourVal)
+                                            onClicked: page.pickHour(dateCard.selKey, hourVal)
                                         }
                                     }
                                 }
@@ -254,7 +255,7 @@ Item {
                                 color: page.selCount(dateCard.selKey) > 0 ? Root.Theme.primary : "#F0F1F3"
                                 Text {
                                     anchors.centerIn: parent
-                                    text: page.selCount(dateCard.selKey) > 0 ? "接这单（已选 " + page.selCount(dateCard.selKey) + " 个时间）" : "接这单（先选时间）"
+                                    text: page.selCount(dateCard.selKey) > 0 ? "接这单（" + page.sel[dateCard.selKey][0] + ":00）" : "接这单（先选时间）"
                                     font.pixelSize: 12
                                     color: page.selCount(dateCard.selKey) > 0 ? "#FFFFFF" : Root.Theme.textLight
                                 }
@@ -269,7 +270,7 @@ Item {
 
                 NoticeBar {
                     width: parent.width
-                    text: "接单须知：每天最多接一单，一次可勾选当天多个时间点；挂单方确认后生效；某天没人接会自动顺延到后续日期；费用线下当面结算。"
+                    text: "接单须知：每天最多接一单、一天仅可选一个时间点；某天任一时间点被接，当天其余时间点全部关闭，没人接则自动顺延到后续日期；挂单方确认后生效；费用线下当面结算。"
                     fg: Root.Theme.blue
                     bg: Root.Theme.blueSoft
                 }
@@ -277,17 +278,16 @@ Item {
         }
     }
 
-    // 每个日期已勾选的时间点：{ "sel_2026-09-08": [18, 19] }
+    // 每个日期已选的时间点：{ "sel_2026-09-08": [20] }（单选，一天仅一个）
     property var sel: ({})
 
-    function toggleHour(key, hour) {
+    function pickHour(key, hour) {
         var cur = (page.sel[key] || []).slice()
-        var i = cur.indexOf(hour)
-        if (i >= 0) cur.splice(i, 1)
-        else { cur.push(hour); cur.sort(function (a, b) { return a - b }) }
+        // 单选：再点同一个取消，点别的直接切换
+        var nextSel = (cur.indexOf(hour) >= 0) ? [] : [hour]
         var next = {}
         for (var k in page.sel) next[k] = page.sel[k]
-        next[key] = cur
+        next[key] = nextSel
         page.sel = next
     }
 
@@ -308,7 +308,7 @@ Item {
 
     function take(dateInfo, selKey) {
         var hours = page.sel[selKey] || []
-        if (!hours.length) { Ui.toast("请先勾选要接的具体时间点"); return }
+        if (!hours.length) { Ui.toast("请先选择要接的时间点"); return }
         if (page.busy) return
         page.busy = true
         Ui.loading(true, "提交中...")

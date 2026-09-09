@@ -143,12 +143,13 @@ void Updater::install()
     }
 
     QString lastErr = QStringLiteral("FileProvider 均不可用");
+    QJniObject uri;
     for (const QString &auth : authorities) {
         for (const QString &path : paths) {
             QJniObject jauth = QJniObject::fromString(auth);
             QJniObject jpath = QJniObject::fromString(path);
             QJniObject jfile("java/io/File", "(Ljava/lang/String;)V", jpath.object());
-            QJniObject uri = QJniObject::callStaticObjectMethod(
+            QJniObject u = QJniObject::callStaticObjectMethod(
                         "androidx/core/content/FileProvider", "getUriForFile",
                         "(Landroid/content/Context;Ljava/lang/String;Ljava/io/File;)Landroid/net/Uri;",
                         context.object(), jauth.object(), jfile.object());
@@ -159,20 +160,26 @@ void Updater::install()
                 lastErr = (m.isValid() ? m.toString() : QStringLiteral("Java 异常"));
                 continue;
             }
-            if (!uri.isValid()) { lastErr = auth + QStringLiteral(" / invalid uri"); continue; }
-
-            QJniObject intent("android/content/Intent", "(Ljava/lang/String;)V",
-                              QJniObject::fromString("android.intent.action.VIEW").object());
-            intent.callObjectMethod("setDataAndType", "(Landroid/net/Uri;Ljava/lang/String;)V",
-                                    uri.object(),
-                                    QJniObject::fromString("application/vnd.android.package-archive").object());
-            intent.callObjectMethod("addFlags", "(I)V", 0x00000001);  // FLAG_GRANT_READ_URI_PERMISSION
-            intent.callObjectMethod("addFlags", "(I)V", 0x10000000);  // FLAG_ACTIVITY_NEW_TASK
-            context.callObjectMethod("startActivity", "(Landroid/content/Intent;)V", intent.object());
-            return;
+            if (!u.isValid()) { lastErr = auth + QStringLiteral(" / invalid uri"); continue; }
+            uri = u;
+            break;
         }
+        if (uri.isValid()) break;
     }
-    emit failed(QStringLiteral("无法生成安装地址（%1），请改用浏览器下载").arg(lastErr));
+    if (!uri.isValid()) {
+        emit failed(QStringLiteral("无法生成安装地址（%1），请改用浏览器下载").arg(lastErr));
+        return;
+    }
+
+    // 调起安装器整个动作收进 Java（ImageHelper.installApk）：
+    // C++ 侧经 JNI 拼 Intent 时 void 方法（setDataAndType/addFlags/startActivity）
+    // 误用 callObjectMethod，在模拟器上 startActivity 一返回就 SEGV
+    const jboolean ok = QJniObject::callStaticMethod<jboolean>(
+                "com/lele/daipao/ImageHelper", "installApk",
+                "(Landroid/content/Context;Ljava/lang/String;)Z",
+                context.object(), QJniObject::fromString(uri.toString()).object());
+    if (env->ExceptionCheck()) env->ExceptionClear();
+    if (!ok) emit failed(QStringLiteral("无法调起安装器，请改用浏览器下载"));
 #else
     emit failed(QStringLiteral("当前平台不支持应用内安装，请用浏览器下载"));
 #endif

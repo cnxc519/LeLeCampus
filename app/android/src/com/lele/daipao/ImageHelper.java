@@ -19,12 +19,28 @@ public class ImageHelper {
 
     /**
      * 读取 content:// 或 file:// 图片并输出为 JPEG 字节。
+     * 注意 uriStr 必须是 String：C++ 侧手里只有 jstring，
+     * 此前直接把 jstring 当 android.net.Uri 传给 openInputStream，
+     * JNI 不做类型检查 —— 真机上 ClassCastException（表现为"图片处理失败"），
+     * x86_64 模拟器上更是直接 SEGV。这里在 Java 内 Uri.parse 转成真 Uri。
      * @param maxDim 输出最长边上限（像素）
      * @param quality JPEG 质量 1-100
      * @return JPEG 字节；失败返回 null
      */
-    public static byte[] readScaledJpeg(Context ctx, Uri uri, int maxDim, int quality) {
+    public static byte[] readScaledJpeg(Context ctx, String uriStr, int maxDim, int quality) {
+        if (uriStr == null || uriStr.isEmpty()) return null;
+        Uri uri = Uri.parse(uriStr);
         try {
+            byte[] r = readScaledJpegInner(ctx, uri, maxDim, quality);
+            if (r == null) android.util.Log.e("ImageHelper", "readScaledJpeg failed for " + uriStr);
+            return r;
+        } catch (Throwable t) {
+            android.util.Log.e("ImageHelper", "readScaledJpeg exception for " + uriStr, t);
+            return null;
+        }
+    }
+
+    private static byte[] readScaledJpegInner(Context ctx, Uri uri, int maxDim, int quality) {
             BitmapFactory.Options bounds = new BitmapFactory.Options();
             bounds.inJustDecodeBounds = true;
             decode(ctx, uri, bounds);
@@ -55,9 +71,6 @@ public class ImageHelper {
             bmp.compress(Bitmap.CompressFormat.JPEG, quality, out);
             bmp.recycle();
             return out.toByteArray();
-        } catch (Throwable t) {
-            return null;
-        }
     }
 
     private static Bitmap decode(Context ctx, Uri uri, BitmapFactory.Options opts) {
@@ -70,6 +83,27 @@ public class ImageHelper {
             return null;
         } finally {
             if (is != null) { try { is.close(); } catch (Throwable ignored) {} }
+        }
+    }
+
+    /**
+     * 调起系统安装器安装 APK（应用内更新）。
+     * C++ 侧经 JNI 拼 Intent 调 startActivity 在模拟器上会 SEGV（void 方法误用
+     * callObjectMethod 等隐患），整个动作收进 Java，异常自兜底。
+     * @return true = 已成功发出安装意图
+     */
+    public static boolean installApk(Context ctx, String uriStr) {
+        try {
+            Uri uri = Uri.parse(uriStr);
+            android.content.Intent i = new android.content.Intent(android.content.Intent.ACTION_VIEW);
+            i.setDataAndType(uri, "application/vnd.android.package-archive");
+            i.addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            i.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+            ctx.startActivity(i);
+            return true;
+        } catch (Throwable t) {
+            android.util.Log.e("ImageHelper", "installApk failed for " + uriStr, t);
+            return false;
         }
     }
 }

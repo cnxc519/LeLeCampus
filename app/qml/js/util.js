@@ -111,3 +111,39 @@ function slotsSummary(slots) {
     });
     return parts.join('，');
 }
+
+// ---------- 坐标系转换：WGS-84（系统定位）→ GCJ-02（高德/火星坐标） ----------
+// Android 定位给出的是 WGS-84 真坐标，而高德地图（含 uri.amap.com 链接）按 GCJ-02
+// 解释坐标——不转换直接发，地图上会整体偏移几百米到一公里（"十万八千里"的主因）。
+function _transformLat(x, y) {
+    var ret = -100.0 + 2.0 * x + 3.0 * y + 0.2 * y * y + 0.1 * x * y + 0.2 * Math.sqrt(Math.abs(x));
+    ret += (20.0 * Math.sin(6.0 * x * Math.PI) + 20.0 * Math.sin(2.0 * x * Math.PI)) * 2.0 / 3.0;
+    ret += (20.0 * Math.sin(y * Math.PI) + 40.0 * Math.sin(y / 3.0 * Math.PI)) * 2.0 / 3.0;
+    ret += (160.0 * Math.sin(y / 12.0 * Math.PI) + 320 * Math.sin(y * Math.PI / 30.0)) * 2.0 / 3.0;
+    return ret;
+}
+function _transformLon(x, y) {
+    var ret = 300.0 + x + 2.0 * y + 0.1 * x * x + 0.1 * x * y + 0.1 * Math.sqrt(Math.abs(x));
+    ret += (20.0 * Math.sin(6.0 * x * Math.PI) + 20.0 * Math.sin(2.0 * x * Math.PI)) * 2.0 / 3.0;
+    ret += (20.0 * Math.sin(x * Math.PI) + 40.0 * Math.sin(x / 3.0 * Math.PI)) * 2.0 / 3.0;
+    ret += (150.0 * Math.sin(x / 12.0 * Math.PI) + 300.0 * Math.sin(x / 30.0 * Math.PI)) * 2.0 / 3.0;
+    return ret;
+}
+// 返回 {lat:..., lon:...}；中国境外原样返回（GCJ 只在国内有意义）
+function wgs2gcj(lat, lon) {
+    if (lon < 72.004 || lon > 137.8347 || lat < 0.8293 || lat > 55.8271) return { lat: lat, lon: lon };
+    var a = 6378245.0, ee = 0.00669342162296594323;
+    var dLat = _transformLat(lon - 105.0, lat - 35.0);
+    var dLon = _transformLon(lon - 105.0, lat - 35.0);
+    var radLat = lat / 180.0 * Math.PI;
+    var magic = Math.sin(radLat);
+    magic = 1 - ee * magic * magic;
+    var sqrtMagic = Math.sqrt(magic);
+    dLat = (dLat * 180.0) / ((a * (1 - ee)) / (magic * sqrtMagic) * Math.PI);
+    dLon = (dLon * 180.0) / (a / sqrtMagic * Math.cos(radLat) * Math.PI);
+    return { lat: lat + dLat, lon: lon + dLon };
+}
+// 定位精度是否可接受：拿不到精度值时视为可接受（不同平台/后端表现不一，不要卡死用户）
+function accuracyOk(acc) {
+    return (acc === undefined || acc === null || isNaN(acc) || acc <= 150);
+}

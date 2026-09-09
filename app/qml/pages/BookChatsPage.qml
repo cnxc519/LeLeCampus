@@ -73,7 +73,7 @@ Item {
                                 Image {
                                     anchors.fill: parent
                                     visible: modelData.book && modelData.book.photo
-                                    source: Session.baseUrl + "/files/books/" + modelData.book.id + ".jpg"
+                                    source: modelData.book ? Session.baseUrl + "/files/books/" + modelData.book.id + ".jpg" : ""
                                     fillMode: Image.PreserveAspectCrop
                                 }
                                 Text { anchors.centerIn: parent; visible: !(modelData.book && modelData.book.photo); text: "📖"; font.pixelSize: 16 }

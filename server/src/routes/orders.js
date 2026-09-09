@@ -150,9 +150,11 @@ router.post('/:id/take', (req, res) => {
   const target = avail.find((a) => a.date === date);
   if (!target) return fail(res, '该日期暂不可接（时间点可能已被接走），请刷新后重试');
 
-  // 接单必须明确选择具体时间点（可多选；含有不可接的时间点时整体拒绝，不做静默截断）
+  // 接单必须明确选择具体时间点（一天仅可选一个：乐跑每天只能跑一次；
+  // 同日其余时间点由下方 bookedHoursByDate 整日占用规则挡掉）
   const reqHours = Array.isArray(req.body.hours) ? [...new Set(req.body.hours.map((h) => parseInt(h, 10)))] : [];
   if (reqHours.length === 0) return fail(res, '请先选择要接的具体时间点');
+  if (reqHours.length > 1) return fail(res, '一天仅能选择一个时间点');
   const invalid = reqHours.filter((h) => !target.hours.includes(h));
   if (invalid.length > 0) return fail(res, '所选时间点已不可接，请刷新后重试');
   const hours = reqHours.sort((a, b) => a - b);

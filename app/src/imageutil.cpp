@@ -21,18 +21,24 @@
 static QByteArray readContentUriViaHelper(const QUrl &url, int maxDim, int quality)
 {
     QJniEnvironment env;
-    if (!env.findClass("com/lele/daipao/ImageHelper"))
+    if (!env.findClass("com/lele/daipao/ImageHelper")) {
+        qWarning() << "[ImageUtil] findClass ImageHelper FAILED";
         return {};
+    }
     QJniObject context = QNativeInterface::QAndroidApplication::context();
     if (!context.isValid()) return {};
+    // uri 以 String 传递（JNI 侧没有 android.net.Uri 包装，直接塞 jstring 给 Uri 形参
+    // 会类型错乱：真机 ClassCastException / 模拟器 SEGV），Java 侧内部 Uri.parse
     QJniObject juri = QJniObject::fromString(url.toString());
     QJniObject bytes = QJniObject::callStaticObjectMethod(
                 "com/lele/daipao/ImageHelper", "readScaledJpeg",
-                "(Landroid/content/Context;Landroid/net/Uri;II)[B",
+                "(Landroid/content/Context;Ljava/lang/String;II)[B",
                 context.object(), juri.object(), (jint)maxDim, (jint)quality);
     if (env.checkAndClearExceptions() || !bytes.isValid()) return {};
 
-    const jint len = bytes.callMethod<jint>("length");
+    // jbyteArray 没有 .length() 方法（那是字段），必须走 JNI 数组接口；
+    // 此前 callMethod<jint>("length") 直接 NoSuchMethodError，白白丢掉已解码好的图片
+    const jsize len = env->GetArrayLength(static_cast<jbyteArray>(bytes.object()));
     if (len <= 0) return {};
     QByteArray out(len, Qt::Uninitialized);
     env->GetByteArrayRegion(static_cast<jbyteArray>(bytes.object()), 0, len,

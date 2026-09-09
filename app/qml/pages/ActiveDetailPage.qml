@@ -404,13 +404,18 @@ Item {
         active: false
         onPositionChanged: {
             if (!page.waitingPos) return
+            var p = posSrc.position
+            if (!p.latitudeValid) return
+            // 首包常是网络缓存定位，误差可达数公里：精度不够就再等一两帧
+            page.posTries++
+            if (page.posTries < 3 && !Util.accuracyOk(p.horizontalAccuracy)) return
             page.waitingPos = false
             active = false
             posCheckTimer.stop()
             Ui.loading(false)
-            var p = posSrc.position
-            if (!p.latitudeValid) { Ui.toast("定位失败，请确认已授权定位权限"); return }
-            var lat = p.coordinate.latitude, lon = p.coordinate.longitude
+            // 系统定位是 WGS-84，高德按 GCJ-02 解释，不转换会偏几百米到一公里
+            var c = Util.wgs2gcj(p.coordinate.latitude, p.coordinate.longitude)
+            var lat = c.lat, lon = c.lon
             Api.post("/api/active/" + page.runId + "/checkin", { lat: lat, lon: lon }).then(function () {
                 Ui.toast("打卡成功！已通知对方")
                 // 打卡的同时把实时位置发进订单会话：对方可直接点开地图导航到集合点
@@ -424,6 +429,7 @@ Item {
         }
     }
     property bool waitingPos: false
+    property int posTries: 0
 
     Component.onCompleted: {
         // load 放最前：保证后续任何语句异常都不会阻断详情加载
@@ -451,13 +457,14 @@ Item {
     function beginCheckin() {
         Ui.loading(true, "获取定位中...")
         page.waitingPos = true
+        page.posTries = 0
         posSrc.active = true
         posSrc.update()
-        posCheckTimer.start() // 6 秒超时
+        posCheckTimer.start() // 10 秒超时（等精度的重试帧也算在内）
     }
     Timer {
         id: posCheckTimer
-        interval: 6000
+        interval: 10000
         repeat: false
         onTriggered: {
             if (page.waitingPos) {

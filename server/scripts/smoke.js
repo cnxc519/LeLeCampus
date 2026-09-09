@@ -41,7 +41,7 @@ async function codeOf(email, purpose) {
   const det = await api('GET', `/api/orders/${oid}`, null, tb);
   check('详情含可用日期', det.ok && det.data.available_dates.length === 3, det.data && det.data.available_dates);
   const date = det.data.available_dates[0].date;
-  const hours = det.data.available_dates[0].hours;
+  const hours = [det.data.available_dates[0].hours[0]]; // 一天仅可接一个时间点
 
   console.log('== 3. B 接单 -> A 直接确认（无支付） ==');
   const tk = await api('POST', `/api/orders/${oid}/take`, { date, hours }, tb);

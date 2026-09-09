@@ -21,6 +21,13 @@ Item {
         anchors.fill: parent
         color: Qt.rgba(0, 0, 0, 0.5)
         visible: page.visible
+        // 遮罩必须挡住穿透点击：否则"需要更新才能继续使用"弹窗底下还能操作页面，
+        // 观感很怪。非强制更新点遮罩等同于"稍后再说"，强制的只拦截不放行
+        MouseArea {
+            anchors.fill: parent
+            enabled: page.visible
+            onClicked: if (!page.forced) page.hide()
+        }
     }
 
     function show(v, isForced) {
@@ -142,16 +149,6 @@ Item {
                 color: Root.Theme.danger
                 font.pixelSize: 12
                 wrapMode: Text.Wrap
-            }
-            // 下载地址小字：便于核对服务器上是否真的发布了 APK
-            Text {
-                width: parent.width
-                visible: page.isAndroid && (page.status === "downloading" || page.status === "error")
-                text: "下载地址：" + page.dlUrl
-                color: Root.Theme.textLight
-                font.pixelSize: 10
-                wrapMode: Text.Wrap
-                elide: Text.ElideRight
             }
 
             // Android：应用内下载并安装

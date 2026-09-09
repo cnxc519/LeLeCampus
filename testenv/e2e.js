@@ -66,7 +66,7 @@ const EMAIL_B = 'b_' + RUN + '@test.com';
 
   console.log('== 5. B 接单 ==');
   const target = detail.available_dates[0];
-  const take = await api('POST', '/api/orders/' + ord.id + '/take', B.token, { date: target.date, hours: target.hours });
+  const take = await api('POST', '/api/orders/' + ord.id + '/take', B.token, { date: target.date, hours: [target.hours[0]] });
   check('接单申请成功 run_id/chat_id', !!take.run_id && !!take.chat_id, take);
 
   console.log('== 6. 聊天（此前 ChatPage 调用了不存在的 GET /api/chats/:id） ==');

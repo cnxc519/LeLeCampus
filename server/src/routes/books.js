@@ -103,7 +103,7 @@ router.get('/', (req, res) => {
 
 // ---------- 我的书（全部状态，管理用） ----------
 router.get('/mine', (req, res) => {
-  const rows = db.prepare(`SELECT * FROM books WHERE seller_id=? ORDER BY id DESC LIMIT 100`).all(req.user.id);
+  const rows = db.prepare(`SELECT * FROM books WHERE seller_id=? AND status!='sold' ORDER BY id DESC LIMIT 100`).all(req.user.id);
   const list = rows.map((b) => {
     const card = bookCard(b);
     const unread = db.prepare(`SELECT COALESCE(SUM(unread_seller),0) n FROM book_chats WHERE book_id=? AND seller_id=?`).get(b.id, req.user.id).n;
@@ -216,12 +216,20 @@ router.post('/:id/report', (req, res) => {
   ok(res, { ok: true, msg: '举报已提交，平台将审核处理' });
 });
 
-// ---------- 状态管理：sold 已售出 / on 重新上架 / off 下架 ----------
+// ---------- 状态管理：off 暂时下架 / on 重新上架 / sold 标记已售出（删除） ----------
 router.post('/:id/status', (req, res) => {
   const b = getOwnBookOrFail(req, res);
   if (!b) return;
   const st = req.body.status;
   if (!BOOK_STATUS.includes(st)) return fail(res, '状态不正确');
+  if (st === 'sold') {
+    // 标记已售出 = 从平台删除：书信息与封面文件一并清除，相关会话关闭（买家无法再发起联系）；
+    // 聊天消息保留（争议凭证），会话列表显示"已删除的书"
+    db.prepare(`DELETE FROM books WHERE id=?`).run(b.id);
+    db.prepare(`UPDATE book_chats SET closed=1 WHERE book_id=?`).run(b.id);
+    try { fs.unlinkSync(path.join(__dirname, '..', '..', 'uploads', 'books', b.id + '.jpg')); } catch (e) {}
+    return ok(res, { id: b.id, status: 'sold' });
+  }
   db.prepare(`UPDATE books SET status=? WHERE id=?`).run(st, b.id);
   ok(res, { id: b.id, status: st });
 });

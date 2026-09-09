@@ -337,18 +337,24 @@ Item {
         active: false
         onPositionChanged: {
             if (!page.waitingPos) return
+            var p = posSrc.position
+            if (!p.latitudeValid) return
+            // 首包常是网络缓存定位，误差可达数公里：精度不够就再等一两帧
+            page.posTries++
+            if (page.posTries < 3 && !Util.accuracyOk(p.horizontalAccuracy)) return
             page.waitingPos = false
             active = false
             posTimer.stop()
             Ui.loading(false)
-            var p = posSrc.position
-            if (!p.latitudeValid) { Ui.toast("定位失败，请确认定位权限"); return }
+            // 系统定位是 WGS-84，高德按 GCJ-02 解释，不转换会偏几百米到一公里
+            var c = Util.wgs2gcj(p.coordinate.latitude, p.coordinate.longitude)
             Api.post("/api/chats/" + page.chatId + "/messages", {
-                type: "location", text: "我的位置", lat: p.coordinate.latitude, lon: p.coordinate.longitude
+                type: "location", text: "我的位置", lat: c.lat, lon: c.lon
             }).then(function () { page.load() }).catch(function (e) { Ui.toast(e.msg) })
         }
     }
     property bool waitingPos: false
+    property int posTries: 0
     // 发位置：先申请定位权限（Android 6+ 动态权限），授权后再取位置
     property bool waitingPerm: false
     function sendLocation() {
@@ -367,13 +373,14 @@ Item {
     function beginSendLocation() {
         Ui.loading(true, "获取定位中...")
         page.waitingPos = true
+        page.posTries = 0
         posSrc.active = true
         posSrc.update()
         posTimer.start()
     }
     Timer {
         id: posTimer
-        interval: 6000
+        interval: 10000 // 等精度的重试帧也算在内，给 GPS 冷启动留够时间
         repeat: false
         onTriggered: {
             if (page.waitingPos) {

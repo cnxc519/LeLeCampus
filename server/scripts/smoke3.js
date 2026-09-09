@@ -24,7 +24,7 @@ async function regUser(email, nick, gender) {
   const o = await api('POST', '/api/orders', { playground_id: 1, remark: '评价测试单', price_cents: 500, slots: [{ day: 2, hour: 10 }], run_count: 1, gender_required: 'none' }, ta);
   const det = await api('GET', '/api/orders/' + o.data.id, null, tb);
   const date = det.data.available_dates[0].date;
-  const hours = det.data.available_dates[0].hours;
+  const hours = [det.data.available_dates[0].hours[0]]; // 一天仅可接一个时间点
   const tk = await api('POST', '/api/orders/' + o.data.id + '/take', { date, hours }, tb);
   await api('POST', '/api/orders/requests/' + tk.data.run_id + '/confirm', {}, ta);
   await api('POST', '/api/active/' + tk.data.run_id + '/complete', {}, ta);
