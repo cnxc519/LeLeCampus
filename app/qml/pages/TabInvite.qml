@@ -73,8 +73,13 @@ Item {
             // 面对面邀请：展示下载海报（含安装二维码），朋友扫码即可下载
             AppCard {
                 width: parent.width
+                height: inviteCol.implicitHeight + 24 // AppCard 是纯容器不会自适应内容，必须显式设高
                 Column {
-                    width: parent.width
+                    id: inviteCol
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.margins: 14
                     spacing: 10
                     Text {
                         text: "📞 面对面邀请"
@@ -114,6 +119,12 @@ Item {
                             anchors.fill: parent
                             onClicked: page.posterOpen = true
                         }
+                    }
+                    AppButton {
+                        width: parent.width
+                        text: page.posterSaving ? "保存中..." : "⬇ 保存海报到相册"
+                        busy: page.posterSaving
+                        onClicked: page.savePoster()
                     }
                 }
             }
@@ -237,6 +248,13 @@ Item {
     // 海报全屏浮层：整幅海报铺满宽度，长图可上下滚动，方便朋友扫二维码
     property bool posterOpen: false
     property bool posterSaving: false
+    function savePoster() {
+        if (page.posterSaving) return
+        page.posterSaving = true
+        var ok = ImageUtil.savePosterToGallery(Session.baseUrl + "/poster.png")
+        page.posterSaving = false
+        Ui.toast(ok ? "海报已保存到相册" : "保存失败，请检查网络后重试")
+    }
     Rectangle {
         anchors.fill: parent
         visible: page.posterOpen
@@ -276,13 +294,7 @@ Item {
             width: parent.width - 120
             text: "保存海报到相册"
             busy: page.posterSaving
-            onClicked: {
-                if (page.posterSaving) return
-                page.posterSaving = true
-                var ok = ImageUtil.savePosterToGallery(Session.baseUrl + "/poster.png")
-                page.posterSaving = false
-                Ui.toast(ok ? "海报已保存到相册" : "保存失败，请检查网络后重试")
-            }
+            onClicked: page.savePoster()
         }
         Rectangle {
             anchors.top: parent.top
