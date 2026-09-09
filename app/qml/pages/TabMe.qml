@@ -323,7 +323,7 @@ Item {
         if (!outUrl) { Ui.loading(false); Ui.toast("图片处理失败，请换一张"); return }
         var fd = new FormData()
         fd.append("file", outUrl)
-        Api.request("/api/auth/me/avatar", { method: "POST", form: fd }).then(function () {
+        Api.request("/api/auth/me/avatar", { method: "POST", form: fd, timeoutMs: 60000 }).then(function () {
             Ui.loading(false)
             Ui.toast("头像已更新")
             load()

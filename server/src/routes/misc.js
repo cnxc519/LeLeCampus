@@ -26,6 +26,9 @@ router.get('/version', (req, res) => {
     url: s.apk_url || '',
     note: s.version_note || '',
     forced: (s.version_forced || 0) === 1,
+    // 永久推广下载页（海报二维码同款地址）：应用内安装失败转浏览器下载时用，
+    // 不再把带 IP:端口的签名直链暴露给用户
+    dl_page: s.dl_page_url || 'https://lele.this-is-my.world/d',
   });
 });
 

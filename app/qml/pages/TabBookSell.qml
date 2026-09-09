@@ -482,7 +482,7 @@ Item {
         Ui.loading(true, "上传中...")
         var fd = new FormData()
         fd.append("file", fileUrl)
-        Api.request("/api/books/" + bookId + "/photo", { method: "POST", form: fd }).then(function () {
+        Api.request("/api/books/" + bookId + "/photo", { method: "POST", form: fd, timeoutMs: 60000 }).then(function () {
             Ui.loading(false)
             Ui.toast("封面已上传")
             loadMine()
@@ -536,11 +536,11 @@ Item {
                 if (page.photoFile) {
                     var fd = new FormData()
                     fd.append("file", page.photoFile)
-                    Api.request("/api/books/" + bookId + "/photo", { method: "POST", form: fd }).then(function () {
+                    Api.request("/api/books/" + bookId + "/photo", { method: "POST", form: fd, timeoutMs: 60000 }).then(function () {
                         after()
-                    }).catch(function () {
+                    }).catch(function (e) {
                         after()
-                        Ui.toast("发布成功（封面上传失败，可稍后在列表点封面重试）")
+                        Ui.toast("发布成功，但封面上传失败：" + (e && e.msg ? e.msg : "网络异常") + "（可在列表点封面重试）")
                     })
                 } else {
                     after()

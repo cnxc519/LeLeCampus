@@ -32,10 +32,10 @@ function installWatchdog(timer) {
         _watchdog.running = false;
     }
 }
-function _track(xhr) {
+function _track(xhr, timeoutMs) {
     if (!_watchdog) return 0;
     var id = ++_seq;
-    _pending[id] = { xhr: xhr, start: Date.now() };
+    _pending[id] = { xhr: xhr, start: Date.now(), timeoutMs: timeoutMs || _timeoutMs };
     _watchdog.running = true; // 有待完成的请求时保持看门狗运转
     return id;
 }
@@ -57,7 +57,8 @@ function watchdogTick() {
     });
 }
 
-// request(path, {method, body, form}) -> Promise(data)；失败 reject({code, msg, status})
+// request(path, {method, body, form, timeoutMs}) -> Promise(data)；失败 reject({code, msg, status})
+// timeoutMs：单请求超时覆盖（默认 12s），文件上传等慢请求应传更大值
 function request(path, opts) {
     opts = opts || {};
     return new Promise(function (resolve, reject) {
@@ -75,7 +76,7 @@ function request(path, opts) {
         }
 
         var settled = false;
-        var wid = _track(xhr);
+        var wid = _track(xhr, opts.timeoutMs);
         function once(fn) {
             return function (v) {
                 if (settled) return;

@@ -325,7 +325,7 @@ Item {
     function complete() {
         Ui.confirm({
             title: "确认委托完成？",
-            text: "确认后订单进入进行中，请按约定时间赴约。费用在见面完成后由双方线下当面结算。",
+            text: "确认后订单将变为「已完成」且不可撤销：双方完成次数各 +1，并开放互相评价。请确认委托已当面完成、费用已线下当面结清。",
             okText: "确认完成"
         }, function (ok) {
             if (!ok) return

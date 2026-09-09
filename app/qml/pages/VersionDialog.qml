@@ -179,17 +179,17 @@ Item {
                 visible: page.isAndroid && page.status === "ready"
             }
 
-            // 桌面端 / Android 下载失败兜底：交给浏览器（同样走一次性签名链接）
+            // 桌面端 / Android 下载失败兜底：打开推广落地页（含安装指引，地址随 /api/version 下发），
+            // 不再暴露带 IP:端口的签名直链
             AppButton {
                 width: parent.width
                 anchors.horizontalCenter: parent.horizontalCenter
                 visible: !page.isAndroid || page.status === "error"
                 text: page.isAndroid ? "浏览器下载" : "打开下载地址"
                 onClicked: {
-                    page.ensureDlUrl(function (u) {
-                        Qt.openUrlExternally(u)
-                        if (!page.forced) page.hide()
-                    })
+                    var landing = (page.info && page.info.dl_page) ? page.info.dl_page : (Session.baseUrl + "/d")
+                    Qt.openUrlExternally(landing)
+                    if (!page.forced) page.hide()
                 }
             }
             AppButton {

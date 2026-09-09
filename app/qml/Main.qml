@@ -19,6 +19,7 @@ Window {
     title: "乐乐代跑"
 
     property bool loggedIn: false
+    property bool booted: false // 启动判定完成标记：自动登录判定前不渲染登录页
     property string currentTab: "order"
     property string lastErrandTab: "order" // 两种模式各自记住上次停留的 Tab
     property string lastMarketTab: "book"
@@ -104,7 +105,8 @@ Window {
                 console.log("[auth] auto-restore: pushed onboarding")
             }
         }
-
+        // 判定完成才放行登录页/主界面渲染，消除启动时的登录页闪烁
+        root.booted = true
     }
 
     onLoggedInChanged: {
@@ -344,12 +346,14 @@ Window {
     }
 
     // ---------- 登录页 ----------
+    // booted：Component.onCompleted 完成自动登录判定后才允许实例化登录页，
+    // 否则有 token 的用户也会先画一帧登录页再切主界面（启动闪登录页的根因）
     Loader {
         id: loginLoader
         anchors.fill: parent
         anchors.topMargin: Qt.platform.os === "android" ? Session.safeTop : 0
         source: "pages/LoginPage.qml"
-        active: !root.loggedIn
+        active: root.booted && !root.loggedIn
         onLoaded: item.app = root
     }
 

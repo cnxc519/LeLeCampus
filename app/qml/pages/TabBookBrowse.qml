@@ -285,7 +285,7 @@ Item {
                         Image {
                             anchors.fill: parent
                             visible: modelData.photo
-                            source: Session.baseUrl + "/files/books/" + modelData.id + ".jpg"
+                            source: modelData.photo ? Session.baseUrl + "/files/books/" + modelData.id + ".jpg" : ""
                             fillMode: Image.PreserveAspectCrop
                         }
                         Text {
@@ -406,13 +406,19 @@ Item {
     function load(reset) {
         if (page.loading) return
         if (reset) page.listPage = 1
+        else if (!page.hasMore) return // 没有更多时禁止 append 模式拉取（定时器/实时事件曾借此重复拼接同页）
         page.loading = true
+        var myPage = page.listPage
         var q = "/api/books?page=" + page.listPage + "&sort=" + page.sort
         if (page.q) q += "&q=" + encodeURIComponent(page.q)
         Api.get(q).then(function (d) {
             page.loading = false
+            if (!reset && myPage !== page.listPage) return // 过期响应：期间已发生重置/翻页，直接丢弃
             if (reset) page.list = []
-            page.list = page.list.concat(d.list)
+            // 追加时按 id 去重：分页窗口移动（新内容插入）可能让相邻页出现同一条
+            var seen = {}
+            page.list.forEach(function (b) { seen[b.id] = 1 })
+            page.list = page.list.concat((d.list || []).filter(function (b) { return !seen[b.id] }))
             page.hasMore = d.has_more
             pullRef.finish()
         }).catch(function (e) {
@@ -437,7 +443,7 @@ Item {
         // 登出时 Loader 卸载会销毁本页，handler 必须解除，否则重登后重复触发
         page._unsubs = [
             Realtime.on("notif", function () { page.loadUnread() }),
-            Realtime.on("bchat", function () { page.load(false) })
+            Realtime.on("bchat", function () { page.load(true) })
         ]
     }
 
@@ -448,6 +454,6 @@ Item {
         id: pageTimer
         interval: 30000
         repeat: true
-        onTriggered: { if (page.visible) page.load(false); page.loadUnread() }
+        onTriggered: { if (page.visible) page.load(true); page.loadUnread() }
     }
 }
