@@ -304,20 +304,24 @@ Item {
                             spacing: 6
                             Text {
                                 // Row 内子项禁止 right 等锚定，价格靠剩余宽度自然排到最右
-                                width: parent.width - 6 - priceTxt.implicitWidth
+                                // 用 priceTxt.width（已限幅）而非 implicitWidth：长价格描述不会把标题挤没
+                                width: parent.width - 6 - priceTxt.width
                                 text: modelData.title
                                 font.pixelSize: 15
                                 font.weight: Font.Bold
                                 color: Root.Theme.text
                                 elide: Text.ElideRight
                             }
-                            Text {
-                                id: priceTxt
-                                text: Util.yuan(modelData.price_cents)
-                                font.pixelSize: 16
-                                font.weight: Font.Bold
-                                color: Root.Theme.primary
-                            }
+                                    Text {
+                                        id: priceTxt
+                                        // 批量发的书 price_cents=0，价格位显示卖家的文字描述
+                                        text: modelData.price_cents > 0 ? Util.yuan(modelData.price_cents) : (modelData.price_note || "价格面议")
+                                        font.pixelSize: modelData.price_cents > 0 ? 15 : 12
+                                        font.weight: Font.Bold
+                                        color: Root.Theme.primary
+                                        elide: Text.ElideRight
+                                        width: Math.min(implicitWidth + 2, parent.width * 0.5)
+                                    }
                         }
                         Row {
                             width: parent.width
@@ -355,7 +359,7 @@ Item {
                         }
                         Text {
                             width: parent.width
-                            text: "👤 " + (modelData.seller ? modelData.seller.nickname : "") + (modelData.school ? " · " + modelData.school : "") + " · " + Util.tsShort(modelData.created_at).slice(5)
+                            text: "👤 " + (modelData.seller ? modelData.seller.nickname : "") + (modelData.school ? " · " + modelData.school : "") + " · " + Util.isoShort(modelData.created_at).slice(5)
                             font.pixelSize: 11
                             color: Root.Theme.textLight
                             elide: Text.ElideRight

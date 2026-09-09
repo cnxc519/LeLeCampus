@@ -3,8 +3,9 @@
 
 #include <QObject>
 #include <QSettings>
+#include <QNetworkAccessManager>
 
-// 本地会话：登录态与偏好设置的持久化（QSettings）
+// 本地会话：登录态与偏好设置的持久化（QSettings）+ 文件上传
 class Session : public QObject
 {
     Q_OBJECT
@@ -61,6 +62,13 @@ public:
 
     Q_INVOKABLE void clear(); // 退出登录时清空
 
+    // 文件上传（multipart）：QML 的 XMLHttpRequest 没有 FormData，带文件的接口
+    // （书籍封面/头像/批量发书）只能在 C++ 用 QNetworkAccessManager 发送。
+    // path=API 路径（如 /api/books/5/photo），fileUrl=file:/// 本地文件，timeoutMs 毫秒，
+    // extra=随文件一起提交的文本表单字段（可省）。返回本次上传的 key，
+    // 结果统一经 uploadFinished(key, ok, status, responseText) 异步回报。
+    Q_INVOKABLE QString uploadFile(const QString &path, const QUrl &fileUrl, int timeoutMs = 60000, const QVariantMap &extra = QVariantMap());
+
     int dismissNoticeId() const { return m_dismissNoticeId; }
     Q_INVOKABLE void setDismissNoticeId(int id);
 
@@ -76,8 +84,11 @@ signals:
     void myIdChanged();
     void safeTopChanged();
     void dismissNoticeIdChanged();
+    void uploadFinished(const QString &key, bool ok, int status, const QString &response);
 
 private:
+    QNetworkAccessManager m_nam;
+    int m_uploadSeq = 0;
     QSettings m_s;
     QString m_token;
     QString m_baseUrl;

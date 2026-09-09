@@ -57,20 +57,19 @@ function watchdogTick() {
     });
 }
 
-// request(path, {method, body, form, timeoutMs}) -> Promise(data)；失败 reject({code, msg, status})
-// timeoutMs：单请求超时覆盖（默认 12s），文件上传等慢请求应传更大值
+// request(path, {method, body, timeoutMs}) -> Promise(data)；失败 reject({code, msg, status})
+// timeoutMs：单请求超时覆盖（默认 12s），文件上传等慢请求应传更大值。
+// 注意：不支持 multipart 表单 —— QML 无 FormData，带文件的请求走 upload()（C++ 实现）
 function request(path, opts) {
     opts = opts || {};
     return new Promise(function (resolve, reject) {
         var xhr = new XMLHttpRequest();
-        var method = opts.method || (opts.body || opts.form ? 'POST' : 'GET');
+        var method = opts.method || (opts.body !== undefined ? 'POST' : 'GET');
         xhr.open(method, baseUrl() + path);
         if (getToken()) xhr.setRequestHeader('Authorization', 'Bearer ' + getToken());
 
         var body = null;
-        if (opts.form) {
-            body = opts.form; // FormData 自动带 multipart 头
-        } else if (opts.body !== undefined) {
+        if (opts.body !== undefined) {
             xhr.setRequestHeader('Content-Type', 'application/json');
             body = JSON.stringify(opts.body);
         }
@@ -124,3 +123,32 @@ function get(path) { return request(path); }
 function post(path, body) { return request(path, { method: 'POST', body: body }); }
 function put(path, body) { return request(path, { method: 'PUT', body: body }); }
 function del(path) { return request(path, { method: 'DELETE' }); }
+
+// ---------- 文件上传（multipart） ----------
+// QML 的 XMLHttpRequest 没有 FormData，带文件的请求由 C++ Session.uploadFile 发送，
+// 结果经 Session.uploadFinished 信号回到这里（Main.qml 启动时把信号接到 onUploadFinished）。
+var _uploads = {}; // key -> { resolve, reject }
+
+function onUploadFinished(key, ok, status, text) {
+    var p = _uploads[key];
+    if (!p) return;
+    delete _uploads[key];
+    var j = null;
+    try { j = JSON.parse(text); } catch (e) {}
+    if (ok && j && j.ok) { p.resolve(j.data); return }
+    p.reject({
+        code: (j && j.error && j.error.code) || (ok ? 'BAD_RESPONSE' : 'NETWORK'),
+        msg: (j && j.error && j.error.msg) || (ok ? '响应格式异常，请稍后重试' : (status ? '上传失败（HTTP ' + status + '）' : '网络异常，请检查网络或服务器地址')),
+        status: status
+    });
+}
+
+// upload(path, fileUrl, timeoutMs, extraFields) -> Promise(data)
+// fileUrl 为 file:/// 本地文件；extraFields 为随文件提交的文本字段（如批量发书的 titles/location）
+function upload(path, fileUrl, timeoutMs, extraFields) {
+    return new Promise(function (resolve, reject) {
+        if (!_env || !_env.upload) { reject({ code: 'INTERNAL', msg: '上传组件未就绪', status: 0 }); return }
+        var key = _env.upload(path, fileUrl, timeoutMs || 60000, extraFields || {});
+        _uploads[key] = { resolve: resolve, reject: reject };
+    });
+}

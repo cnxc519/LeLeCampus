@@ -1,5 +1,11 @@
 #include "session.h"
 
+#include <QFile>
+#include <QHttpMultiPart>
+#include <QNetworkReply>
+#include <QNetworkRequest>
+#include <QUrl>
+
 Session::Session(QObject *parent) : QObject(parent)
 {
     m_token = m_s.value("auth/token", "").toString();
@@ -114,4 +120,53 @@ void Session::clear()
     setNickname("");
     setEmail("");
     setMyId(0);
+}
+
+QString Session::uploadFile(const QString &path, const QUrl &fileUrl, int timeoutMs, const QVariantMap &extra)
+{
+    const QString key = QStringLiteral("u%1").arg(++m_uploadSeq);
+    const QString local = fileUrl.toLocalFile();
+    QFile *file = new QFile(local);
+    if (local.isEmpty() || !file->open(QIODevice::ReadOnly)) {
+        file->deleteLater();
+        // 统一走信号回报，调用方（api.js）无需区分同步/异步失败
+        QMetaObject::invokeMethod(this, [this, key]() {
+            emit uploadFinished(key, false, 0,
+                                QStringLiteral("{\"error\":{\"code\":\"FILE\",\"msg\":\"无法读取所选图片\"}}"));
+        }, Qt::QueuedConnection);
+        return key;
+    }
+
+    auto *multi = new QHttpMultiPart(QHttpMultiPart::FormDataType);
+    // 随文件一起提交的文本字段（批量发书的 titles/location/price_note 等）
+    for (auto it = extra.constBegin(); it != extra.constEnd(); ++it) {
+        QHttpPart textPart;
+        textPart.setHeader(QNetworkRequest::ContentDispositionHeader,
+                           QStringLiteral("form-data; name=\"%1\"").arg(it.key()));
+        textPart.setBody(it.value().toString().toUtf8());
+        multi->append(textPart);
+    }
+    QHttpPart part;
+    part.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("image/jpeg"));
+    // 服务端 multer 按字段名 file 取文件；类型恒为 JPEG（ImageUtil.compress 统一压成 jpg）
+    part.setHeader(QNetworkRequest::ContentDispositionHeader,
+                   QStringLiteral("form-data; name=\"file\"; filename=\"photo.jpg\""));
+    part.setBodyDevice(file);
+    file->setParent(multi); // multi 析构时连带关闭并释放文件
+    multi->append(part);
+
+    QNetworkRequest req(QUrl(m_baseUrl + path));
+    req.setTransferTimeout(timeoutMs > 0 ? timeoutMs : 60000);
+    if (!m_token.isEmpty())
+        req.setRawHeader("Authorization", "Bearer " + m_token.toUtf8());
+
+    QNetworkReply *reply = m_nam.post(req, multi);
+    multi->setParent(reply);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, key]() {
+        reply->deleteLater();
+        const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        const bool ok = reply->error() == QNetworkReply::NoError;
+        emit uploadFinished(key, ok, status, QString::fromUtf8(reply->readAll()));
+    });
+    return key;
 }

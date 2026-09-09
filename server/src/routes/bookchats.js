@@ -33,10 +33,10 @@ router.get('/', (req, res) => {
   const list = rows.map((c) => {
     const isSeller = c.seller_id === me;
     const other = db.prepare(`SELECT id,nickname,avatar,gender FROM users WHERE id=?`).get(isSeller ? c.buyer_id : c.seller_id);
-    const book = db.prepare(`SELECT id,title,price_cents,photo,status,seller_id FROM books WHERE id=?`).get(c.book_id);
+    const book = db.prepare(`SELECT id,title,price_cents,price_note,photo,status,seller_id FROM books WHERE id=?`).get(c.book_id);
     const last = db.prepare(`SELECT sender_id,type,text,created_at FROM book_messages WHERE chat_id=? ORDER BY id DESC LIMIT 1`).get(c.id);
     return {
-      id: c.id, book: book ? { id: book.id, title: book.title, price_cents: book.price_cents, photo: book.photo, status: book.status } : null,
+      id: c.id, book: book ? { id: book.id, title: book.title, price_cents: book.price_cents, price_note: book.price_note || '', photo: book.photo, status: book.status } : null,
       role: isSeller ? 'seller' : 'buyer',
       other,
       unread: isSeller ? c.unread_seller : c.unread_buyer,

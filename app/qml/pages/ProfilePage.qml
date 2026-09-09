@@ -154,7 +154,7 @@ Item {
                         }
                         Text {
                             anchors.right: parent.right
-                            text: page.user ? page.user.created_at.slice(0, 10) : ""
+                            text: page.user ? Util.isoDateFull(page.user.created_at) : ""
                             font.pixelSize: 13
                             color: Root.Theme.text
                         }
@@ -208,7 +208,7 @@ Item {
                                     Image {
                                         anchors.fill: parent
                                         visible: modelData.photo === 1
-                                        source: Session.baseUrl + "/files/books/" + modelData.id + ".jpg"
+                                        source: modelData.photo === 1 ? Session.baseUrl + "/files/books/" + modelData.id + ".jpg" : ""
                                         fillMode: Image.PreserveAspectCrop
                                     }
                                     Text { anchors.centerIn: parent; visible: modelData.photo !== 1; text: "📖"; font.pixelSize: 15 }
@@ -236,10 +236,12 @@ Item {
                                 Text {
                                     id: priceTxt
                                     anchors.verticalCenter: parent.verticalCenter
-                                    text: Util.yuan(modelData.price_cents)
-                                    font.pixelSize: 14
+                                    text: modelData.price_cents > 0 ? Util.yuan(modelData.price_cents) : (modelData.price_note || "价格面议")
+                                    font.pixelSize: modelData.price_cents > 0 ? 14 : 11
                                     font.weight: Font.Bold
                                     color: Root.Theme.primary
+                                    elide: Text.ElideRight
+                                    width: Math.min(implicitWidth + 2, 120)
                                 }
                             }
                         }

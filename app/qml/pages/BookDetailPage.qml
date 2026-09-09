@@ -46,15 +46,22 @@ Item {
                 Rectangle {
                     id: cover
                     width: parent.width
-                    height: 190
+                    // 高度随封面真实比例自适应：PreserveAspectCrop 会把海报/宽图裁到只剩中间一条，
+                    // 这里按图片宽高比撑高（190~430 之间收口，防止极端长图占满整页）；
+                    // 图片未加载完时 implicitWidth 为 0，自然回落到下限 190
+                    height: page.detail && page.detail.photo
+                            ? Math.max(190, Math.min(430, width * coverImg.implicitHeight / Math.max(1, coverImg.implicitWidth)))
+                            : 190
                     radius: 14
                     color: page.detail && page.detail.photo ? "transparent" : "#EFF3FA"
                     clip: true
                     Image {
+                        id: coverImg
                         anchors.fill: parent
                         visible: page.detail && page.detail.photo
-                        source: page.detail ? Session.baseUrl + "/files/books/" + page.detail.id + ".jpg" : ""
-                        fillMode: Image.PreserveAspectCrop
+                        // source 必须随 photo 置空：Image 不可见时仍会加载 source，photo=0 也去请求会刷 404
+                        source: page.detail && page.detail.photo ? Session.baseUrl + "/files/books/" + page.detail.id + ".jpg" : ""
+                        fillMode: Image.PreserveAspectFit
                     }
                     Column {
                         anchors.centerIn: parent
@@ -74,6 +81,8 @@ Item {
                 }
 
                 // ---------- 标题 / 价格 / 状态 ----------
+                // 注意：Row 内子项禁止锚定（anchors.right/verticalCenter 会让 Row 放弃布局，
+                // 整行渲染不出来——此前标题价格行一直没显示就是这个原因），贴右靠宽度计算
                 Row {
                     width: parent.width
                     spacing: 8
@@ -84,13 +93,15 @@ Item {
                         font.weight: Font.Bold
                         color: Root.Theme.text
                         wrapMode: Text.Wrap
-                        anchors.verticalCenter: parent.verticalCenter
                     }
                     Text {
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: page.detail ? Util.yuan(page.detail.price_cents) : ""
-                        font.pixelSize: 22
+                        width: page.detail && page.detail.price_cents > 0 ? Math.min(implicitWidth + 2, 122) : 122
+                        horizontalAlignment: Text.AlignRight
+                        wrapMode: Text.Wrap
+                        lineHeight: 1.3
+                        // 批量发的书 price_cents=0，价格位显示卖家的文字描述
+                        text: !page.detail ? "" : (page.detail.price_cents > 0 ? Util.yuan(page.detail.price_cents) : (page.detail.price_note || "价格面议"))
+                        font.pixelSize: page.detail && page.detail.price_cents > 0 ? 22 : 13
                         font.weight: Font.Bold
                         color: Root.Theme.primary
                     }
@@ -197,7 +208,7 @@ Item {
                                 color: Root.Theme.text
                             }
                             Text {
-                                text: page.detail && page.detail.seller ? ("完成代跑 " + page.detail.seller.completed_count + " 单 · 爽约 " + (page.detail.seller.no_show_count + page.detail.seller.no_show_count_poster) + " 次 · 注册 " + Util.tsShort(page.detail.seller.created_at).slice(0, 10)) : ""
+                                text: page.detail && page.detail.seller ? ("完成代跑 " + page.detail.seller.completed_count + " 单 · 爽约 " + (page.detail.seller.no_show_count + page.detail.seller.no_show_count_poster) + " 次 · 注册 " + Util.isoDate(page.detail.seller.created_at)) : ""
                                 font.pixelSize: 11
                                 color: Root.Theme.textSub
                             }
@@ -225,7 +236,7 @@ Item {
 
                 Text {
                     width: parent.width
-                    text: "发布于 " + (page.detail ? Util.tsShort(page.detail.created_at) : "")
+                    text: "发布于 " + (page.detail ? Util.isoShort(page.detail.created_at) : "")
                     color: Root.Theme.textLight
                     font.pixelSize: 11
                     horizontalAlignment: Text.AlignHCenter

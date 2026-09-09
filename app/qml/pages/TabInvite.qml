@@ -218,7 +218,7 @@ Item {
                                 color: Root.Theme.text
                             }
                             Text {
-                                text: Util.tsShort(modelData.created_at) + " 加入"
+                                text: Util.isoShort(modelData.created_at) + " 加入"
                                 font.pixelSize: 11
                                 color: Root.Theme.textLight
                             }

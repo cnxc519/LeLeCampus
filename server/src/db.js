@@ -178,7 +178,8 @@ CREATE TABLE IF NOT EXISTS books(
   title TEXT NOT NULL,               -- 书名
   course TEXT,                       -- 课程名（可空）
   cond INTEGER,                      -- 新旧程度 1全新 2几乎全新 3有笔记划线 4使用痕迹多（可空）
-  price_cents INTEGER NOT NULL,      -- 价格（分）
+  price_cents INTEGER NOT NULL,      -- 价格（分）；批量发书为 0（哨兵），价格看 price_note
+  price_note TEXT,                   -- 价格文字描述（批量发书共用，如"左边10r/本，右边20r/本"）
   note TEXT,                         -- 补充说明（可空）
   photo INTEGER NOT NULL DEFAULT 0,  -- 是否有封面图
   status TEXT NOT NULL DEFAULT 'on' CHECK(status IN ('on','off','sold')), -- on 在售 off 已下架 sold 已售出
@@ -237,6 +238,12 @@ if (!orderCols.includes('price_cents')) {
   if (!bookCols.includes('location')) {
     db.exec(`ALTER TABLE books ADD COLUMN location TEXT`);
     console.log('[migrate] books 表已增加 location 列');
+  }
+  // 批量发书：价格文字描述（如"左边10r/本，右边20r/本"）。批量书 price_cents=0（哨兵，
+  // 单本最低 0.01 元不可能是 0），买家端价格位显示 price_note
+  if (!bookCols.includes('price_note')) {
+    db.exec(`ALTER TABLE books ADD COLUMN price_note TEXT`);
+    console.log('[migrate] books 表已增加 price_note 列');
   }
 }
 

@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const express = require('express');
 const multer = require('multer');
-const { db, getSettings } = require('../db');
+const { db, tx, getSettings } = require('../db');
 const { requireUser } = require('../auth');
 const { ok, fail, nowTs, clampInt } = require('../util');
 const { userPublic } = require('../business');
@@ -26,12 +26,15 @@ function bookCard(b) {
   const school = db.prepare(`SELECT name FROM schools WHERE id=?`).get(seller ? seller.school_id : 0);
   return {
     id: b.id, title: b.title, course: b.course, cond: b.cond, cond_cn: b.cond ? COND_CN[b.cond] || '' : '',
-    price_cents: b.price_cents, note: b.note, photo: b.photo, location: b.location || '',
+    price_cents: b.price_cents, price_note: b.price_note || '', note: b.note, photo: b.photo, location: b.location || '',
     status: b.status, created_at: b.created_at,
     school: school ? school.name : '',
     seller: seller ? { id: seller.id, nickname: seller.nickname, gender: seller.gender, avatar: seller.avatar } : null,
   };
 }
+
+// 价格排序：批量书 price_cents=0（只有文字价格），无法参与比价，固定排在最后
+function priceVal(b) { return b.price_cents > 0 ? b.price_cents : null; }
 
 // 图片上传人校验：仅本人
 function getOwnBookOrFail(req, res) {
@@ -76,6 +79,140 @@ router.post('/', (req, res) => {
   ok(res, { id: r.lastInsertRowid });
 });
 
+// ---------- 批量发书 ----------
+// 卖家把所有书放一起拍一张照很常见，单本逐个发太繁琐。流程：
+// 1) POST /batch/analyze  上传合照 -> 服务端调 GLM 视觉识别书名（key 只在服务端）-> 返回书名数组
+// 2) POST /batch          书名数组 + 共用地点 + 价格文字描述 + 合照 -> 一次建 N 本书，
+//    合照复制为每本书的封面（/files/books/{id}.jpg），完全复用单本书的浏览/详情/聊天逻辑
+// 批量书 price_cents=0（哨兵：单本最低 0.01 元），价格展示用 price_note 文字
+
+const cfg = require('../config').cfg;
+const ANALYZE_MAX = 20;
+
+// 识别频率限制（内存级即可，防手抖连点烧 token）：每用户 6 次/分钟、30 次/天
+const analyzeHits = {};
+function analyzeRateOk(uid) {
+  const now = Date.now();
+  const h = analyzeHits[uid] || (analyzeHits[uid] = { minute: [], day: [] });
+  h.minute = h.minute.filter((t) => now - t < 60e3);
+  h.day = h.day.filter((t) => now - t < 86400e3);
+  if (h.minute.length >= 6 || h.day.length >= 30) return false;
+  h.minute.push(now); h.day.push(now);
+  return true;
+}
+
+// 调 GLM 视觉识别书名；失败/未配置返回 { error } 
+async function aiDetectTitles(imageBuffer, mime) {
+  const ai = cfg.ai;
+  if (!ai || !ai.api_key || String(ai.api_key).includes('你的')) return { error: '图片识别未配置，请手动填写书名' };
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 60e3);
+  try {
+    const r = await fetch((ai.base_url || 'https://open.bigmodel.cn/api/paas/v4') + '/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + ai.api_key },
+      signal: ctrl.signal,
+      body: JSON.stringify({
+        model: ai.model || 'glm-5.3-flash',
+        temperature: 0.1,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image_url', image_url: { url: `data:${mime || 'image/jpeg'};base64,` + imageBuffer.toString('base64') } },
+            { type: 'text', text: '这是卖家把多本旧书放在一起拍的照片。请识别图中每一本书的书名。'
+              + '要求：只输出 JSON，格式 {"books":["书名1","书名2"]}；书名以图中印刷文字为准，可去掉"第X版"里无法看清的部分，'
+              + `最多 ${ANALYZE_MAX} 本；图片模糊、拍的不是书或看不清任何书名时返回 {"books":[]}。不要输出 JSON 以外的任何内容。` },
+          ],
+        }],
+      }),
+    });
+    if (!r.ok) return { error: 'AI 服务异常（HTTP ' + r.status + '），请稍后重试或手动填写' };
+    const j = await r.json();
+    let text = j && j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content || '';
+    text = String(text).replace(/```json|```/g, '');
+    const m = text.indexOf('{');
+    const e = text.lastIndexOf('}');
+    if (m < 0 || e <= m) return { error: 'AI 没认出书名，请手动填写' };
+    const arr = JSON.parse(text.slice(m, e + 1)).books;
+    if (!Array.isArray(arr)) return { error: 'AI 没认出书名，请手动填写' };
+    const titles = [...new Set(arr.map((t) => String(t || '').replace(/\s+/g, ' ').trim()).filter(Boolean))].slice(0, ANALYZE_MAX);
+    return { titles };
+  } catch (err) {
+    return { error: err.name === 'AbortError' ? 'AI 识别超时，请重试或手动填写' : 'AI 识别失败，请重试或手动填写' };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// 合照解析（内存存储：转 base64 直接发给 AI，不落盘）
+const analyzeUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 6 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const okType = file.mimetype === 'image/jpeg' || file.mimetype === 'image/png';
+    cb(okType ? null : new Error('仅支持 JPG/PNG 图片'), okType);
+  },
+});
+
+router.post('/batch/analyze', analyzeUpload.single('file'), async (req, res) => {
+  if (!analyzeRateOk(req.user.id)) return fail(res, '识别太频繁啦，稍等片刻再试');
+  if (!req.file) return fail(res, '请选择合照（把要卖的书放一起拍一张）');
+  const out = await aiDetectTitles(req.file.buffer, req.file.mimetype);
+  if (out.error) return fail(res, out.error);
+  if (!out.titles.length) return fail(res, 'AI 没认出书名——请把书名拍清楚再试，或手动填写');
+  ok(res, { titles: out.titles });
+});
+
+// 批量发布：multipart 字段 titles(JSON数组串) / location / price_note + 合照 file
+const batchUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const okType = file.mimetype === 'image/jpeg' || file.mimetype === 'image/png';
+    cb(okType ? null : new Error('仅支持 JPG/PNG 图片'), okType);
+  },
+});
+
+router.post('/batch', batchUpload.single('file'), (req, res) => {
+  let titles;
+  try { titles = JSON.parse(String(req.body.titles || '[]')); } catch (e) { titles = null; }
+  if (!Array.isArray(titles)) return fail(res, '书名列表格式不正确');
+  titles = [...new Set(titles.map((t) => String(t || '').replace(/\s+/g, ' ').trim()).filter(Boolean))];
+  if (!titles.length || titles.length > ANALYZE_MAX) return fail(res, `请填写 1-${ANALYZE_MAX} 个书名`);
+  if (titles.some((t) => t.length > 40)) return fail(res, '书名最长 40 字');
+  const location = String(req.body.location || '').trim();
+  if (location.length < 2 || location.length > 30) return fail(res, '请填写交易地点（2-30 字，方便买家当面取书）');
+  const priceNote = String(req.body.price_note || '').trim();
+  if (priceNote.length < 1 || priceNote > 60) return fail(res, '请填写价格描述（1-60 字，如：左边10r/本，右边20r/本）');
+  if (!req.file) return fail(res, '请附带合照作为封面');
+
+  const dir = path.join(__dirname, '..', '..', 'uploads', 'books');
+  fs.mkdirSync(dir, { recursive: true });
+  const now = new Date().toISOString();
+  const ids = [];
+  try {
+    const insert = db.prepare(`INSERT INTO books(seller_id,title,cond,price_cents,price_note,location,photo,created_at) VALUES(?,?,?,?,?,?,1,?)`);
+    tx(() => {
+      for (const t of titles) {
+        const r = insert.run(req.user.id, t, null, 0, priceNote, location, now);
+        ids.push(Number(r.lastInsertRowid));
+      }
+    });
+    // 同一张合照作为每本书的封面（每本约几十~两百 KB，成本可忽略；
+    // 复用 /files/books/{id}.jpg 后买家端浏览/详情/聊天零改动）
+    for (const id of ids) fs.writeFileSync(path.join(dir, id + '.jpg'), req.file.buffer);
+  } catch (e) {
+    console.error('[books/batch] 发布失败:', e.message);
+    // 失败回滚已插入的行，避免留下没封面的半截批量书
+    for (const id of ids) {
+      db.prepare(`DELETE FROM books WHERE id=? AND seller_id=?`).run(id, req.user.id);
+      try { fs.unlinkSync(path.join(dir, id + '.jpg')); } catch (e2) {}
+    }
+    return fail(res, '发布失败，请重试');
+  }
+  ok(res, { count: ids.length, ids });
+});
+
 // ---------- 浏览列表（在售；仅本校，支持模糊搜索） ----------
 router.get('/', (req, res) => {
   const me = req.user;
@@ -92,9 +229,9 @@ router.get('/', (req, res) => {
     .all(me.id, me.school_id);
 
   let list = rows;
-  if (fQ) list = list.filter((b) => fuzzyHit(fQ, b.title) || fuzzyHit(fQ, b.course) || fuzzyHit(fQ, b.note));
-  if (sort === 'price_asc') list.sort((a, b) => a.price_cents - b.price_cents || b.id - a.id);
-  else if (sort === 'price_desc') list.sort((a, b) => b.price_cents - a.price_cents || b.id - a.id);
+  if (fQ) list = list.filter((b) => fuzzyHit(fQ, b.title) || fuzzyHit(fQ, b.course) || fuzzyHit(fQ, b.note) || fuzzyHit(fQ, b.price_note));
+  if (sort === 'price_asc') list.sort((a, b) => (priceVal(a) ?? Infinity) - (priceVal(b) ?? Infinity) || b.id - a.id);
+  else if (sort === 'price_desc') list.sort((a, b) => (priceVal(b) ?? -Infinity) - (priceVal(a) ?? -Infinity) || b.id - a.id);
 
   const total = list.length;
   const slice = list.slice((page - 1) * size, page * size);

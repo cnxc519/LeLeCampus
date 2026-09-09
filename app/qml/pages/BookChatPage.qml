@@ -59,14 +59,14 @@ Item {
                     Image {
                         anchors.fill: parent
                         visible: page.meta && page.meta.book && page.meta.book.photo
-                        source: page.meta && page.meta.book ? Session.baseUrl + "/files/books/" + page.meta.book.id + ".jpg" : ""
+                        source: page.meta && page.meta.book && page.meta.book.photo ? Session.baseUrl + "/files/books/" + page.meta.book.id + ".jpg" : ""
                         fillMode: Image.PreserveAspectCrop
                     }
                     Text { anchors.centerIn: parent; visible: !(page.meta && page.meta.book && page.meta.book.photo); text: "📖"; font.pixelSize: 13 }
                 }
                 Text {
                     id: barTitle
-                    width: parent.width - barCover.width - 24 - barPrice.implicitWidth - barMore.implicitWidth
+                    width: parent.width - barCover.width - 24 - barPrice.width - barMore.implicitWidth
                     anchors.verticalCenter: parent.verticalCenter
                     text: page.meta && page.meta.book ? "《" + page.meta.book.title + "》" : ""
                     font.pixelSize: 12
@@ -77,7 +77,10 @@ Item {
                 Text {
                     id: barPrice
                     anchors.verticalCenter: parent.verticalCenter
-                    text: page.meta && page.meta.book ? Util.yuan(page.meta.book.price_cents) : ""
+                    // 文字价格可能较长：限宽省略，标题宽度按实际占用计算，不会挤出信息条
+                    width: Math.min(implicitWidth + 2, parent.width * 0.4)
+                    elide: Text.ElideRight
+                    text: page.meta && page.meta.book ? (page.meta.book.price_cents > 0 ? Util.yuan(page.meta.book.price_cents) : (page.meta.book.price_note || "价格面议")) : ""
                     font.pixelSize: 14
                     font.weight: Font.Bold
                     color: Root.Theme.primary

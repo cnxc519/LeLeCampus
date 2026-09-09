@@ -26,6 +26,9 @@ router.get('/version', (req, res) => {
     url: s.apk_url || '',
     note: s.version_note || '',
     forced: (s.version_forced || 0) === 1,
+    // 永久推广下载页（海报二维码同款地址）：应用内安装失败转浏览器下载时用，
+    // 不再把带 IP:端口的签名直链暴露给用户
+    dl_page: s.dl_page_url || 'https://lele.this-is-my.world/d',
   });
 });
 
@@ -82,7 +85,7 @@ router.get('/users/:id/profile', requireUser, (req, res) => {
   // 二手书市：在售/已售出统计 + 最近在售（最多 3 本，点击可进书详情）
   const booksOn = db.prepare(`SELECT COUNT(*) c FROM books WHERE seller_id=? AND status='on'`).get(u.id).c;
   const booksSold = db.prepare(`SELECT COUNT(*) c FROM books WHERE seller_id=? AND status='sold'`).get(u.id).c;
-  const books = db.prepare(`SELECT id,title,price_cents,cond,photo,status FROM books WHERE seller_id=? AND status='on' ORDER BY id DESC LIMIT 3`).all(u.id);
+  const books = db.prepare(`SELECT id,title,price_cents,price_note,cond,photo,status FROM books WHERE seller_id=? AND status='on' ORDER BY id DESC LIMIT 3`).all(u.id);
   ok(res, {
     user: {
       ...userPublic(u), recent_completed: recent,

@@ -84,8 +84,11 @@ Window {
                 root.loggedIn = false
                 Realtime.disconnect()
                 Ui.toast("登录已过期，请重新登录")
-            }
+            },
+            upload: function (path, fileUrl, timeoutMs, extra) { return Session.uploadFile(path, fileUrl, timeoutMs, extra || {}) }
         })
+        // 上传结果回报：QML 无 FormData，multipart 由 Session.uploadFile(C++) 发送
+        Session.uploadFinished.connect(Api.onUploadFinished)
         Api.installWatchdog(apiWatchdog)
         Ui.install({
             toast: function (m) { overlays.showToast(m) },

@@ -56,6 +56,49 @@ Item {
                         color: Root.Theme.text
                     }
 
+                    // 发布方式切换：单本逐个填 / 一摞书拍一张照批量发
+                    Row {
+                        spacing: 8
+                        Repeater {
+                            model: [{ v: 0, l: "📖 单本发布" }, { v: 1, l: "📚 批量发书" }]
+                            delegate: Rectangle {
+                                height: 32
+                                width: segTxt.implicitWidth + 24
+                                radius: 16
+                                color: page.postMode === modelData.v ? Root.Theme.primary : "#F0F1F3"
+                                Text {
+                                    id: segTxt
+                                    anchors.centerIn: parent
+                                    text: modelData.l
+                                    font.pixelSize: 12
+                                    font.weight: page.postMode === modelData.v ? Font.Bold : Font.Normal
+                                    color: page.postMode === modelData.v ? "#FFFFFF" : Root.Theme.textSub
+                                }
+                                MouseArea {
+                                    anchors.fill: parent
+                                    onClicked: page.postMode = modelData.v
+                                }
+                            }
+                        }
+                    }
+
+                    Text {
+                        visible: page.postMode === 1
+                        width: parent.width
+                        text: "把要卖的书放一起拍一张照，AI 帮你认出书名，核对后一次全部上架；价格可以写一句描述（如：左边10r/本，右边20r/本）。"
+                        color: Root.Theme.textSub
+                        font.pixelSize: 11
+                        wrapMode: Text.Wrap
+                        lineHeight: 1.45
+                    }
+
+                    // ---------- 单本表单 ----------
+                    Column {
+                        id: singleCol
+                        visible: page.postMode === 0
+                        width: parent.width
+                        spacing: 12
+
                     // 书名
                     Column {
                         width: parent.width
@@ -275,6 +318,169 @@ Item {
                         busyText: "发布中..."
                         onClicked: page.publish()
                     }
+                    } // 单本表单
+
+                    // ---------- 批量发书 ----------
+                    Column {
+                        visible: page.postMode === 1
+                        width: parent.width
+                        spacing: 12
+
+                        // 合照
+                        Column {
+                            width: parent.width
+                            spacing: 8
+                            Text { text: "合照（必选，一张）"; color: Root.Theme.textSub; font.pixelSize: 12 }
+                            Row {
+                                width: parent.width
+                                spacing: 10
+                                Rectangle {
+                                    width: 120; height: 90
+                                    radius: 10
+                                    color: page.batchCover ? "transparent" : "#F0F1F3"
+                                    border.color: Root.Theme.line
+                                    clip: true
+                                    Image {
+                                        anchors.fill: parent
+                                        visible: page.batchCover
+                                        source: page.batchCover
+                                        fillMode: Image.PreserveAspectCrop
+                                    }
+                                    Column {
+                                        anchors.centerIn: parent
+                                        visible: !page.batchCover
+                                        spacing: 4
+                                        Text { text: "📷"; font.pixelSize: 22 }
+                                        Text { text: "拍合照"; color: Root.Theme.textLight; font.pixelSize: 10 }
+                                    }
+                                    MouseArea { anchors.fill: parent; onClicked: page.pickBatchPhoto() }
+                                }
+                                Column {
+                                    width: parent.width - 130
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    spacing: 8
+                                    Text {
+                                        width: parent.width
+                                        text: "把要卖的书放一起拍一张，尽量让每个书名都拍清晰。这张照片会同时作为每本书的封面。"
+                                        color: Root.Theme.textSub
+                                        font.pixelSize: 11
+                                        wrapMode: Text.Wrap
+                                        lineHeight: 1.45
+                                    }
+                                    Rectangle {
+                                        height: 34
+                                        width: aiTxt.implicitWidth + 28
+                                        radius: 17
+                                        color: page.batchAiImg ? Root.Theme.primary : "#E4E7EC"
+                                        Text {
+                                            id: aiTxt
+                                            anchors.centerIn: parent
+                                            text: "🤖 AI 识别书名"
+                                            font.pixelSize: 12
+                                            font.weight: Font.Bold
+                                            color: page.batchAiImg ? "#FFFFFF" : Root.Theme.textSub
+                                        }
+                                        MouseArea { anchors.fill: parent; onClicked: page.batchAnalyze() }
+                                    }
+                                }
+                            }
+                        }
+
+                        // 书名列表（AI 识别结果可增删改）
+                        Column {
+                            width: parent.width
+                            spacing: 8
+                            Row {
+                                width: parent.width
+                                spacing: 8
+                                Text {
+                                    width: parent.width - 78
+                                    text: "书名（识别后请核对，1-40 字）"
+                                    color: Root.Theme.textSub
+                                    font.pixelSize: 12
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                                Rectangle {
+                                    height: 26
+                                    width: addTxt.implicitWidth + 18
+                                    radius: 13
+                                    color: Root.Theme.primarySoft
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    Text {
+                                        id: addTxt
+                                        anchors.centerIn: parent
+                                        text: "+ 添加一本"
+                                        font.pixelSize: 11
+                                        color: Root.Theme.primaryDark
+                                    }
+                                    MouseArea { anchors.fill: parent; onClicked: page.batchTitles = page.batchTitles.concat([""]) }
+                                }
+                            }
+                            Repeater {
+                                model: page.batchTitles
+                                delegate: Row {
+                                    width: parent.width
+                                    spacing: 8
+                                    property int rowIdx: index
+                                    AppInput {
+                                        width: parent.width - 40
+                                        height: 42
+                                        font.pixelSize: 14
+                                        text: modelData
+                                        onTextChanged: {
+                                            if (rowIdx >= 0 && rowIdx < page.batchTitles.length)
+                                                page.batchTitles[rowIdx] = text
+                                        }
+                                    }
+                                    Rectangle {
+                                        width: 32; height: 42
+                                        radius: 10
+                                        color: "#F0F1F3"
+                                        Text { anchors.centerIn: parent; text: "✕"; font.pixelSize: 14; color: Root.Theme.textSub }
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            onClicked: {
+                                                var a = page.batchTitles.slice()
+                                                a.splice(rowIdx, 1)
+                                                page.batchTitles = a
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            Text {
+                                visible: page.batchTitles.length === 0
+                                width: parent.width
+                                text: "还没添加书：选好合照后点「AI 识别书名」自动认出，也可以「+ 添加一本」手动填。"
+                                color: Root.Theme.textLight
+                                font.pixelSize: 11
+                                wrapMode: Text.Wrap
+                            }
+                        }
+
+                        // 地点（共用）
+                        Column {
+                            width: parent.width
+                            spacing: 8
+                            Text { text: "交易地点（必填，所有书共用）"; color: Root.Theme.textSub; font.pixelSize: 12 }
+                            AppInput { id: batchLocInput; hint: "当面交书的地点，例如：工学部松园操场北门" }
+                        }
+
+                        // 价格描述（共用，文字）
+                        Column {
+                            width: parent.width
+                            spacing: 8
+                            Text { text: "价格描述（必填，1-60 字，所有书共用）"; color: Root.Theme.textSub; font.pixelSize: 12 }
+                            AppInput { id: batchPriceInput; hint: "例如：左边10r/本，右边20r/本" }
+                            Text { text: "买家浏览和详情页都会看到这句话，按图中的方位写清楚即可"; color: Root.Theme.textLight; font.pixelSize: 11 }
+                        }
+
+                        AppButton {
+                            width: parent.width
+                            text: page.batchTitles.filter(function (t) { return t.trim() }).length + " 本全部发布"
+                            onClicked: page.batchPublish()
+                        }
+                    }
                 }
             }
 
@@ -316,7 +522,7 @@ Item {
                                 Image {
                                     anchors.fill: parent
                                     visible: modelData.photo
-                                    source: Session.baseUrl + "/files/books/" + modelData.id + ".jpg"
+                                    source: modelData.photo ? Session.baseUrl + "/files/books/" + modelData.id + ".jpg" : ""
                                     fillMode: Image.PreserveAspectCrop
                                 }
                                 Text { anchors.centerIn: parent; visible: !modelData.photo; text: "📖"; font.pixelSize: 20 }
@@ -333,7 +539,8 @@ Item {
                                     spacing: 6
                                     Text {
                                         // Row 内子项禁止 right 等锚定，价格靠剩余宽度自然排到最右
-                                        width: parent.width - 6 - priceTxt.implicitWidth
+                                        // 用 priceTxt.width（已限幅）而非 implicitWidth：长价格描述不会把标题挤没
+                                        width: parent.width - 6 - priceTxt.width
                                         text: modelData.title
                                         font.pixelSize: 14
                                         font.weight: Font.Bold
@@ -342,10 +549,13 @@ Item {
                                     }
                                     Text {
                                         id: priceTxt
-                                        text: Util.yuan(modelData.price_cents)
-                                        font.pixelSize: 15
+                                        // 批量发的书 price_cents=0，价格位显示卖家的文字描述
+                                        text: modelData.price_cents > 0 ? Util.yuan(modelData.price_cents) : (modelData.price_note || "价格面议")
+                                        font.pixelSize: modelData.price_cents > 0 ? 15 : 12
                                         font.weight: Font.Bold
                                         color: Root.Theme.primary
+                                        elide: Text.ElideRight
+                                        width: Math.min(implicitWidth + 2, parent.width * 0.5)
                                     }
                                 }
                                 Row {
@@ -449,7 +659,15 @@ Item {
     property string photoFile: ""
     property bool extraOpen: false // 发布表单的选填折叠区（课程/说明/封面）默认收起
 
-    // 上传目标：null=发布中的新书；否则为已有书的 id（更换封面）
+    // 发布方式：0 单本 / 1 批量
+    property int postMode: 0
+    // 批量发书：合照两个版本（AI 识别用高清大图，封面用标准压缩图）+ 书名列表
+    property string batchCover: ""
+    property string batchAiImg: ""
+    property var batchTitles: []
+    // 待上传目标：single=单本新书封面 / cover=换已有书封面 / batch=批量合照
+    property string pendingKind: ""
+
     function pickPhoto(bookId) {
         Ui.confirm({
             title: "选择封面照片",
@@ -458,16 +676,107 @@ Item {
         }, function (ok) {
             if (!ok) return
             page.pendingUploadBook = bookId
+            page.pendingKind = bookId ? "cover" : "single"
             photoDlg.open()
         })
     }
     property var pendingUploadBook: null
+
+    // 批量发书：选合照（书名拍清晰）
+    function pickBatchPhoto() {
+        Ui.confirm({
+            title: "选择合照",
+            text: "把要卖的书放一起拍一张：尽量让每个书名都拍清晰、朝向镜头。这张照片会同时作为每本书的封面，AI 识别约需 20 秒。",
+            okText: "选择照片"
+        }, function (ok) {
+            if (!ok) return
+            page.pendingKind = "batch"
+            photoDlg.open()
+        })
+    }
+
+    // AI 识别合照里的书名（服务端转调 GLM 视觉，key 不落客户端）
+    function batchAnalyze() {
+        if (!page.batchAiImg) { Ui.toast("请先选合照"); return }
+        var go = function () {
+            Ui.loading(true, "图片识别处理中，约需 20 秒，请耐心等待...")
+            Api.upload("/api/books/batch/analyze", page.batchAiImg, 120000).then(function (d) {
+                Ui.loading(false)
+                page.batchTitles = d.titles.map(function (t) { return t })
+                Ui.toast("识别出 " + d.titles.length + " 本，请核对增删改")
+            }).catch(function (e) {
+                Ui.loading(false)
+                Ui.toast(e.msg)
+            })
+        }
+        var hasContent = page.batchTitles.some(function (t) { return t.trim() })
+        if (hasContent) {
+            Ui.confirm({
+                title: "重新识别？",
+                text: "识别结果会覆盖你现在填写的书名列表。",
+                okText: "覆盖并识别"
+            }, function (ok) { if (ok) go() })
+        } else {
+            go()
+        }
+    }
+
+    function batchPublish() {
+        var titles = page.batchTitles.map(function (t) { return t.trim() }).filter(function (t) { return t })
+        if (!titles.length) { Ui.toast("请至少填写一个书名"); return }
+        if (titles.length > 20) { Ui.toast("一次最多发布 20 本"); return }
+        if (titles.some(function (t) { return t.length > 40 })) { Ui.toast("有书名超过 40 字，请修改"); return }
+        if (!page.batchCover) { Ui.toast("请先选合照（会作为每本书的封面）"); return }
+        var location = batchLocInput.text.trim()
+        if (location.length < 2 || location.length > 30) { Ui.toast("请填写交易地点（2-30 字）"); return }
+        var priceNote = batchPriceInput.text.trim()
+        if (!priceNote) { Ui.toast("请填写价格描述，例如：左边10r/本，右边20r/本"); return }
+        if (priceNote.length > 60) { Ui.toast("价格描述最长 60 字"); return }
+
+        Ui.confirm({
+            title: "批量发布 " + titles.length + " 本书？",
+            text: "将一次发布 " + titles.length + " 本独立的书：共用这张合照作封面，交易地点「" + location + "」，价格描述「" + priceNote + "」。平台不参与交易，请与买家当面验书、当面付款。",
+            okText: "确认发布"
+        }, function (ok) {
+            if (!ok) return
+            Ui.loading(true, "发布中...")
+            Api.upload("/api/books/batch", page.batchCover, 120000, {
+                titles: JSON.stringify(titles),
+                location: location,
+                price_note: priceNote
+            }).then(function (d) {
+                Ui.loading(false)
+                Ui.toast("已发布 " + d.count + " 本书！")
+                page.batchTitles = []
+                batchLocInput.text = ""
+                batchPriceInput.text = ""
+                page.batchCover = ""
+                page.batchAiImg = ""
+                loadMine()
+            }).catch(function (e) {
+                Ui.loading(false)
+                Ui.toast(e.msg)
+            })
+        })
+    }
 
     FileDialog {
         id: photoDlg
         fileMode: FileDialog.OpenFile
         nameFilters: ["图片 (*.jpg *.jpeg *.png)"]
         onAccepted: {
+            // 批量合照：压两版——AI 识别要看得清书名（大而清晰），封面按常规压缩
+            if (page.pendingKind === "batch") {
+                var aiImg = ImageUtil.compress(photoDlg.selectedFile, 1600, 500)
+                var coverImg = ImageUtil.compress(photoDlg.selectedFile, 800, 200)
+                if (!aiImg) aiImg = coverImg
+                if (!coverImg) coverImg = aiImg
+                if (!aiImg || !coverImg) { Ui.toast("图片处理失败，请换一张"); return }
+                page.batchAiImg = aiImg
+                page.batchCover = coverImg
+                Ui.toast("已选合照，点「AI 识别书名」开始识别")
+                return
+            }
             var outUrl = ImageUtil.compress(photoDlg.selectedFile, 600, 200)
             if (!outUrl) { Ui.toast("图片处理失败，请换一张"); return }
             if (page.pendingUploadBook) {
@@ -480,9 +789,7 @@ Item {
 
     function uploadPhoto(bookId, fileUrl) {
         Ui.loading(true, "上传中...")
-        var fd = new FormData()
-        fd.append("file", fileUrl)
-        Api.request("/api/books/" + bookId + "/photo", { method: "POST", form: fd, timeoutMs: 60000 }).then(function () {
+        Api.upload("/api/books/" + bookId + "/photo", fileUrl, 60000).then(function () {
             Ui.loading(false)
             Ui.toast("封面已上传")
             loadMine()
@@ -534,9 +841,7 @@ Item {
                     loadMine()
                 }
                 if (page.photoFile) {
-                    var fd = new FormData()
-                    fd.append("file", page.photoFile)
-                    Api.request("/api/books/" + bookId + "/photo", { method: "POST", form: fd, timeoutMs: 60000 }).then(function () {
+                    Api.upload("/api/books/" + bookId + "/photo", page.photoFile, 60000).then(function () {
                         after()
                     }).catch(function (e) {
                         after()

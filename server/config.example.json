@@ -19,5 +19,11 @@
     "_说明": "管理后台账号（http://服务器:端口/admin）"
   },
   "tz_offset_hours": 8,
-  "upload_dir": "./uploads"
+  "upload_dir": "./uploads",
+  "ai": {
+    "_说明": "批量发书的图片识别（GLM 视觉）。key 只存服务端，勿提交 git。不配置则批量识别不可用（手动填书名仍可用）。",
+    "base_url": "https://open.bigmodel.cn/api/paas/v4",
+    "api_key": "你的智谱API Key",
+    "model": "glm-5.3-flash"
+  }
 }

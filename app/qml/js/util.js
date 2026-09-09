@@ -89,6 +89,23 @@ function tsShort(ts) {
     return ('0' + (d.getUTCMonth() + 1)).slice(-2) + '-' + ('0' + d.getUTCDate()).slice(-2) + ' ' + tsHHMM(ts);
 }
 
+// ---------- 服务端 ISO 时间（UTC 存储：users/books/orders 的 created_at、runs.completed_at） ----------
+// 与 nowTs() 的 epoch 毫秒是两套格式：ISO 串直接喂 tsShort 会发生字符串拼接（V4 宽容解析
+// 出的是未加 8 小时的 UTC），直接 slice 显示的也是 UTC —— 都会差 8 小时，必须先转毫秒。
+function isoMs(iso) {
+    var t = Date.parse(iso);
+    return isNaN(t) ? 0 : t;
+}
+// MM-DD HH:mm（北京时间）
+function isoShort(iso) { return iso ? tsShort(isoMs(iso)) : ''; }
+// MM-DD
+function isoDate(iso) { return iso ? tsShort(isoMs(iso)).slice(0, 5) : ''; }
+// YYYY-MM-DD
+function isoDateFull(iso) {
+    if (!iso) return '';
+    return new Date(isoMs(iso) + 8 * 3600 * 1000).toISOString().slice(0, 10);
+}
+
 // 默认头像文字：昵称首字符（字母取大写）
 function avatarText(nickname) {
     if (!nickname) return '乐';
