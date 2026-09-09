@@ -192,7 +192,7 @@ Item {
                     Column {
                         width: parent.width
                         spacing: 8
-                        Text { text: "挂单次数（同一时间点只安排一人，各时间点可分别被接）"; color: Root.Theme.textSub; font.pixelSize: 12 }
+                        Text { text: "挂单次数（同一天仅会安排一人；当天未被接将自动顺延至后续日期，直到次数用完）"; color: Root.Theme.textSub; font.pixelSize: 12 }
                         Row {
                             spacing: 12
                             Rectangle {

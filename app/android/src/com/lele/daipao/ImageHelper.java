@@ -106,4 +106,43 @@ public class ImageHelper {
             return false;
         }
     }
+
+    /**
+     * 从服务器下载宣传海报并保存到系统相册（Pictures/乐乐代跑/）。
+     * 走 MediaStore 插入，API 29+ 无需存储权限。
+     * @return true = 保存成功
+     */
+    public static boolean savePoster(Context ctx, String urlStr) {
+        try {
+            java.net.HttpURLConnection conn = (java.net.HttpURLConnection)
+                    new java.net.URL(urlStr).openConnection();
+            conn.setConnectTimeout(15000);
+            conn.setReadTimeout(30000);
+            java.io.InputStream in = conn.getInputStream();
+            java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+            byte[] buf = new byte[16384];
+            int n;
+            while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+            in.close();
+            byte[] data = out.toByteArray();
+            if (data.length == 0) return false;
+
+            android.content.ContentValues v = new android.content.ContentValues();
+            v.put(android.provider.MediaStore.Images.Media.DISPLAY_NAME,
+                    "乐乐代跑海报_" + System.currentTimeMillis() + ".png");
+            v.put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/png");
+            v.put(android.provider.MediaStore.Images.Media.RELATIVE_PATH,
+                    android.os.Environment.DIRECTORY_PICTURES + "/乐乐代跑");
+            android.net.Uri uri = ctx.getContentResolver()
+                    .insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, v);
+            if (uri == null) return false;
+            java.io.OutputStream os = ctx.getContentResolver().openOutputStream(uri);
+            os.write(data);
+            os.close();
+            return true;
+        } catch (Throwable t) {
+            android.util.Log.e("ImageHelper", "savePoster failed", t);
+            return false;
+        }
+    }
 }

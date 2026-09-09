@@ -50,6 +50,24 @@ static QByteArray readContentUriViaHelper(const QUrl &url, int maxDim, int quali
 
 ImageUtil::ImageUtil(QObject *parent) : QObject(parent) {}
 
+bool ImageUtil::savePosterToGallery(const QUrl &url)
+{
+#ifdef Q_OS_ANDROID
+    QJniEnvironment env;
+    QJniObject context = QNativeInterface::QAndroidApplication::context();
+    if (!context.isValid()) return false;
+    QJniObject jurl = QJniObject::fromString(url.toString());
+    jboolean ok = QJniObject::callStaticMethod<jboolean>(
+                "com/lele/daipao/ImageHelper", "savePoster",
+                "(Landroid/content/Context;Ljava/lang/String;)Z",
+                context.object(), jurl.object());
+    if (env->ExceptionCheck()) env->ExceptionClear();
+    return ok;
+#else
+    return false;
+#endif
+}
+
 QString ImageUtil::compress(const QUrl &src, int maxDim, int maxKb)
 {
     QImage img;

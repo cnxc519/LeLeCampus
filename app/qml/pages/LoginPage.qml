@@ -331,6 +331,32 @@ Item {
                                     }
                                 }
                             }
+                            // 学校不在此列：低调入口，联系开发者上架新学校
+                            Text {
+                                width: parent.width
+                                text: "找不到你的学校？"
+                                color: Root.Theme.textLight
+                                font.pixelSize: 11
+                                font.underline: true
+                                horizontalAlignment: Text.AlignHCenter
+                                MouseArea {
+                                    anchors.fill: parent
+                                    anchors.margins: -6
+                                    onClicked: {
+                                        Ui.confirm({
+                                            title: "添加新学校",
+                                            text: "平台目前先开放武汉大学试点。如果你的学校不在此列，请添加开发者 QQ：185520896，提供学校名称即可为你上架。",
+                                            okText: "复制 QQ 号",
+                                            cancelText: "关闭"
+                                        }, function (ok) {
+                                            if (ok) {
+                                                Clipboard.text = "185520896"
+                                                Ui.toast("QQ 号已复制")
+                                            }
+                                        })
+                                    }
+                                }
+                            }
                             // 加载中提示
                             Text {
                                 width: parent.width

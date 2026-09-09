@@ -62,6 +62,10 @@ app.get('/dl/latest', (req, res) => {
   res.setHeader('Content-Disposition', `attachment; filename="lele-daipao-v${code}.apk"`);
   res.sendFile(apkPath);
 });
+// 推广物料：落地页引用的 App 图标与邀请海报（随代码分发）
+app.get('/appicon.png', (req, res) => res.sendFile(path.join(__dirname, 'appicon.png')));
+app.get('/poster.png', (req, res) => res.sendFile(path.join(__dirname, 'poster.png')));
+
 app.get('/d', (req, res) => {
   const { getSettings } = require('./db');
   const s = getSettings();
@@ -76,8 +80,7 @@ app.get('/d', (req, res) => {
   body{margin:0;font-family:-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;
     background:linear-gradient(180deg,#0f8a5f 0%,#16a06f 30%,#f4f6f7 30.1%);min-height:100vh;text-align:center}
   .wrap{max-width:420px;margin:0 auto;padding:48px 24px 40px}
-  .logo{width:76px;height:76px;border-radius:20px;background:#fff;display:inline-flex;align-items:center;
-    justify-content:center;font-size:40px;font-weight:800;color:#0f8a5f;box-shadow:0 6px 18px rgba(0,0,0,.18)}
+  .logo{width:76px;height:76px;border-radius:20px;object-fit:cover;box-shadow:0 6px 18px rgba(0,0,0,.18)}
   h1{color:#fff;font-size:26px;margin:14px 0 4px;letter-spacing:1px}
   .sub{color:rgba(255,255,255,.85);font-size:13px;margin-bottom:26px}
   .card{background:#fff;border-radius:16px;padding:22px 18px;box-shadow:0 8px 24px rgba(0,0,0,.08)}
@@ -90,7 +93,7 @@ app.get('/d', (req, res) => {
   .foot{color:#a8b0b6;font-size:11px;margin-top:22px;line-height:1.7}
 </style></head><body>
 <div class="wrap">
-  <div class="logo">跑</div>
+  <img class="logo" src="/appicon.png" alt="乐乐代跑">
   <h1>乐乐代跑</h1>
   <div class="sub">校园代跑互助 · 二手书市 · 一个 App</div>
   <div class="card">

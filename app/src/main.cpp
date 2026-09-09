@@ -1,3 +1,4 @@
+#include <QClipboard>
 #include <QGuiApplication>
 #include <QKeyEvent>
 #include <QQmlApplicationEngine>
@@ -65,6 +66,9 @@ int main(int argc, char *argv[])
     qmlRegisterSingletonInstance("LeLeDaiPao", 1, 0, "Permissions", new Permissions(&app));
 
     QQmlApplicationEngine engine;
+    // 剪贴板：QML 里 Clipboard.text = "..." 直接读写（邀请码复制等此前引用了不存在的
+    // Clipboard 对象，点击复制会 ReferenceError 静默失败）
+    engine.rootContext()->setContextProperty(QStringLiteral("Clipboard"), QGuiApplication::clipboard());
     engine.loadFromModule("LeLeDaiPao", "Main");
     if (engine.rootObjects().isEmpty())
         return -1;

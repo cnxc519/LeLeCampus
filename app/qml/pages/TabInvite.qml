@@ -70,6 +70,54 @@ Item {
                 }
             }
 
+            // 面对面邀请：展示下载海报（含安装二维码），朋友扫码即可下载
+            AppCard {
+                width: parent.width
+                Column {
+                    width: parent.width
+                    spacing: 10
+                    Text {
+                        text: "📞 面对面邀请"
+                        font.pixelSize: 15
+                        font.weight: Font.Bold
+                        color: Root.Theme.text
+                    }
+                    Text {
+                        width: parent.width
+                        text: "点开海报给同学扫一扫即可下载；注册时填写你的邀请码「" + (page.detail ? page.detail.invite_code : "") + "」就是好友啦"
+                        wrapMode: Text.Wrap
+                        font.pixelSize: 12
+                        color: Root.Theme.textSub
+                    }
+                    Rectangle {
+                        width: parent.width
+                        height: width * 1.42
+                        radius: 12
+                        color: "#F0F1F3"
+                        clip: true
+                        Image {
+                            anchors.fill: parent
+                            source: Qt.resolvedUrl("../../posters/invite_poster.png")
+                            fillMode: Image.PreserveAspectCrop
+                        }
+                        Text {
+                            anchors.bottom: parent.bottom
+                            anchors.right: parent.right
+                            anchors.margins: 8
+                            text: "点开查看大图 ▶"
+                            color: "#FFFFFF"
+                            font.pixelSize: 11
+                            style: Text.Outline
+                            styleColor: Qt.rgba(0, 0, 0, 0.6)
+                        }
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: page.posterOpen = true
+                        }
+                    }
+                }
+            }
+
             // 已邀请人数
             AppCard {
                 width: parent.width
@@ -185,4 +233,67 @@ Item {
     }
 
     Component.onCompleted: load()
+
+    // 海报全屏浮层：整幅海报铺满宽度，长图可上下滚动，方便朋友扫二维码
+    property bool posterOpen: false
+    property bool posterSaving: false
+    Rectangle {
+        anchors.fill: parent
+        visible: page.posterOpen
+        z: 100
+        color: "#E9ECEF"
+        Flickable {
+            anchors.fill: parent
+            contentHeight: posterCol.implicitHeight + 120
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
+            Column {
+                id: posterCol
+                width: parent.width
+                spacing: 10
+                Text {
+                    width: parent.width
+                    horizontalAlignment: Text.AlignHCenter
+                    text: "让朋友扫海报上的二维码下载，注册时填写你的邀请码"
+                    font.pixelSize: 12
+                    color: Root.Theme.textSub
+                }
+                Image {
+                    id: posterFull
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    width: parent.width
+                    source: Qt.resolvedUrl("../../posters/invite_poster.png")
+                    fillMode: Image.PreserveAspectFit
+                }
+                Item { width: 1; height: 30 }
+            }
+        }
+        // 保存海报到相册：方便发朋友圈/群里传播（走 MediaStore，免存储权限）
+        AppButton {
+            anchors.bottom: parent.bottom
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.bottomMargin: 24
+            width: parent.width - 120
+            text: "保存海报到相册"
+            busy: page.posterSaving
+            onClicked: {
+                if (page.posterSaving) return
+                page.posterSaving = true
+                var ok = ImageUtil.savePosterToGallery(Session.baseUrl + "/poster.png")
+                page.posterSaving = false
+                Ui.toast(ok ? "海报已保存到相册" : "保存失败，请检查网络后重试")
+            }
+        }
+        Rectangle {
+            anchors.top: parent.top
+            anchors.topMargin: 12
+            anchors.right: parent.right
+            anchors.rightMargin: 16
+            width: 96; height: 36
+            radius: 18
+            color: Qt.rgba(0, 0, 0, 0.55)
+            Text { anchors.centerIn: parent; text: "✕ 关闭"; color: "#FFFFFF"; font.pixelSize: 13 }
+            MouseArea { anchors.fill: parent; onClicked: page.posterOpen = false }
+        }
+    }
 }

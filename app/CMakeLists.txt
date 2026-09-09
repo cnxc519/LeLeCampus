@@ -71,6 +71,9 @@ qt_add_qml_module(LeLeDaiPao
         qml/pages/BookDetailPage.qml
         qml/pages/BookChatPage.qml
         qml/pages/BookChatsPage.qml
+    RESOURCES
+        # 邀请页「面对面邀请」宣传海报（朋友扫二维码下载）；资源路径 = /qt/qml/LeLeDaiPao/posters/...
+        posters/invite_poster.png
     SOURCES
         src/session.h src/session.cpp
         src/imageutil.h src/imageutil.cpp
