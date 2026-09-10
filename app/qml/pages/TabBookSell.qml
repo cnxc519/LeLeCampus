@@ -659,8 +659,8 @@ Item {
     property string photoFile: ""
     property bool extraOpen: false // 发布表单的选填折叠区（课程/说明/封面）默认收起
 
-    // 发布方式：0 单本 / 1 批量
-    property int postMode: 0
+    // 发布方式：0 单本 / 1 批量。默认批量——用户反馈"一摞书拍一张"是主流发书方式
+    property int postMode: 1
     // 批量发书：合照两个版本（AI 识别用高清大图，封面用标准压缩图）+ 书名列表
     property string batchCover: ""
     property string batchAiImg: ""

@@ -20,6 +20,16 @@ try {
     console.log('[migrate] 已清理历史已售出书籍', soldRows.length, '本');
   }
 } catch (e) { console.log('[migrate] 已售出书籍清理失败:', e.message); }
+
+// 老库迁移：book_chats 增加会话关闭标记列（标记售出即删时关闭会话用）。
+// 9 月初创建的生产库没有该列，导致"标记已售出"报"服务器开小差"但书已删除
+{
+  const chatCols = db.prepare(`PRAGMA table_info(book_chats)`).all().map((c) => c.name);
+  if (!chatCols.includes('closed')) {
+    db.exec(`ALTER TABLE book_chats ADD COLUMN closed INTEGER NOT NULL DEFAULT 0`);
+    console.log('[migrate] book_chats 表已增加 closed 列');
+  }
+}
 db.exec('PRAGMA journal_mode=WAL');
 db.exec('PRAGMA foreign_keys=ON');
 
